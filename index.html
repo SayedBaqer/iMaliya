@@ -220,6 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
+const BUILD='build 9 · 2026-06-22';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -809,8 +810,8 @@ const PALETTE=['#00d3a7','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b
 let charts={};
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
 // Fixed-height container prevents the responsive-canvas feedback loop (infinite y growth)
-function chartBox(h=230){const box=el('div',{class:'chartbox'});box.style.height=h+'px';
-  const cv=el('canvas',{});box.append(cv);return{box,cv};}
+function chartBox(h=230){const box=el('div',{class:'chartbox',dir:'ltr'});box.style.height=h+'px';
+  const cv=el('canvas',{dir:'ltr'});box.append(cv);return{box,cv};}
 // hint + reset for hand-zoomable time-axis charts
 function zoomBar(chartKey){
   if(!window.Hammer)return null;
@@ -1266,7 +1267,7 @@ function viewMore(root){
   v.append(el('div',{class:'card',style:{marginTop:'14px'}},
     el('div',{style:{fontWeight:700,marginBottom:'6px'}},t('about')),
     el('div',{class:'muted',style:{fontSize:'13px'}},t('privacyNote')),
-    el('div',{class:'faint',style:{fontSize:'12px',marginTop:'8px'}},'iMaliya · v1.0 · '+S.txns.length+' '+t('transactionsCount'))));
+    el('div',{class:'faint',style:{fontSize:'12px',marginTop:'8px'}},'iMaliya · '+BUILD+' · '+S.txns.length+' '+t('transactionsCount'))));
   root.append(v);
 }
 function moreRow(ic,title,sub,onclick,danger){
@@ -1685,17 +1686,13 @@ async function boot(){
   await ingestFromURL();
   // 3) standalone Safari PWA: re-read a connected bridge file where the platform allows
   await autoSyncBridge();
-  // register a minimal service worker for offline shell
-  if('serviceWorker' in navigator){
-    const swCode=`self.addEventListener('install',e=>self.skipWaiting());
-      self.addEventListener('activate',e=>self.clients.claim());
-      self.addEventListener('fetch',e=>{e.respondWith(
-        caches.open('iml-v1').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(resp=>{
-          if(e.request.method==='GET'&&resp.ok&&e.request.url.startsWith('http'))c.put(e.request,resp.clone());return resp;
-        }).catch(()=>c.match('/')))));});`;
-    const blob=new Blob([swCode],{type:'text/javascript'});
-    try{await navigator.serviceWorker.register(URL.createObjectURL(blob));}catch(e){}
-  }
+  // Remove any previously-installed service worker + caches. The old cache-first SW could
+  // "freeze" an outdated copy of the app; during active development we always want fresh code.
+  try{
+    if('serviceWorker' in navigator)
+      (await navigator.serviceWorker.getRegistrations()).forEach(r=>r.unregister());
+    if(window.caches)(await caches.keys()).forEach(k=>caches.delete(k));
+  }catch(e){}
 }
 window.addEventListener('DOMContentLoaded',boot);
 </script>
