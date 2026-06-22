@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
 :root{
   --bg:#0b1020; --bg-2:#111a3a; --card:#141d40; --card-2:#1a2550;
@@ -261,7 +262,7 @@ const I18N={
     rememberRule:'Remember & auto-apply to future',linkToAccount:'One of my accounts',asCounterparty:'A payee / merchant',
     noData:'No data yet',startBy:'Add a transaction or import a statement to begin.',
     pasteSms:'Paste bank SMS',parseSms:'Parse & add',smsHelp:'Paste one or more bank SMS messages. Set up the iOS Shortcut to append them to a JSON bridge automatically.',
-    importHelp:'CSV or Excel. We auto-detect Date, Amount & Description. Assign the whole file to one account.',
+    importHelp:'PDF, CSV or Excel. We auto-detect Date, Amount & Description. Assign the whole file to one account. (Digital PDFs parse directly; scanned PDFs need a clearer file.)',
     assignAccount:'Assign all rows to',goldenRule:'Reconciliation',recurring:'Subscriptions',
     detected:'detected',spentTo:'Top payees',confidence:'confidence',review:'Review',linked:'Linked',
     transactionsCount:'transactions',avgPerDay:'avg/day',largest:'Largest',addCategory:'Add category',
@@ -305,7 +306,7 @@ const I18N={
     rememberRule:'تذكّر وطبّق تلقائيًا',linkToAccount:'أحد حساباتي',asCounterparty:'جهة / متجر',
     noData:'لا توجد بيانات بعد',startBy:'أضف حركة أو استورد كشفًا للبدء.',
     pasteSms:'الصق رسالة البنك',parseSms:'تحليل وإضافة',smsHelp:'الصق رسائل البنك. أعدّ اختصار iOS لإضافتها تلقائيًا.',
-    importHelp:'CSV أو Excel. نكتشف التاريخ والمبلغ والوصف تلقائيًا.',
+    importHelp:'PDF أو CSV أو Excel. نكتشف التاريخ والمبلغ والوصف تلقائيًا. (ملفات PDF الرقمية تُقرأ مباشرة؛ الممسوحة ضوئيًا تحتاج ملفًا أوضح.)',
     assignAccount:'إسناد كل الصفوف إلى',goldenRule:'المطابقة',recurring:'الاشتراكات',
     detected:'مكتشفة',spentTo:'أكثر الجهات',confidence:'الثقة',review:'مراجعة',linked:'مربوط',
     transactionsCount:'حركة',avgPerDay:'المعدل اليومي',largest:'الأكبر',addCategory:'إضافة فئة',
@@ -676,9 +677,57 @@ function readFile(file,accountId,cb){
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
       cb(await importRows(rows,accountId));};
     reader.readAsArrayBuffer(file);
+  }else if(ext==='pdf'){
+    reader.onload=async e=>{
+      try{cb(await importPDF(new Uint8Array(e.target.result),accountId));}
+      catch(err){toast('Could not read PDF');cb(null);}};
+    reader.readAsArrayBuffer(file);
   }else{
-    toast('Unsupported file. Use CSV or Excel.');cb(null);
+    toast('Unsupported file. Use PDF, CSV or Excel.');cb(null);
   }
+}
+// Deterministic digital-PDF parse (§3 Path 1): extract text, rebuild lines by y-position,
+// then pull date + amount(s) from each statement line. Best-effort; rows land editable.
+async function pdfLines(data){
+  if(!window.pdfjsLib)throw new Error('pdfjs not loaded');
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data}).promise;
+  const lines=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);const tc=await page.getTextContent();
+    const rows={};
+    tc.items.forEach(it=>{const y=Math.round(it.transform[5]);const key=y;
+      (rows[key]=rows[key]||[]).push({x:it.transform[4],s:it.str});});
+    Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const line=rows[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim();
+      if(line)lines.push(line);});
+  }
+  return lines;
+}
+async function importPDF(data,accountId){
+  const lines=await pdfLines(data);
+  let added=0,dup=0,debits=0,credits=0;
+  const dateRe=/\b(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4})\b/;
+  const amtRe=/-?\d{1,3}(?:,\d{3})*\.\d{2,3}\b/g;
+  for(const line of lines){
+    const dm=line.match(dateRe);if(!dm)continue;
+    const nums=line.match(amtRe);if(!nums||!nums.length)continue;
+    // last number is usually the running balance; the amount is the one before it (or the only one)
+    const balance=nums.length>1?parseFloat(nums[nums.length-1].replace(/,/g,'')):null;
+    const amtStr=nums.length>1?nums[nums.length-2]:nums[0];
+    const amount=Math.abs(parseFloat(amtStr.replace(/,/g,'')));
+    if(!amount)continue;
+    const lc=line.toLowerCase();
+    let direction=/\b(cr|credit|deposit|دائن|إيداع|راتب)\b/.test(lc)?'in':
+                  /\b(dr|debit|pos|purchase|withdraw|مدين|سحب|شراء)\b/.test(lc)?'out':
+                  (amtStr.trim().startsWith('-')?'out':'out');
+    const desc=line.replace(dateRe,'').replace(amtRe,'').replace(/\s+/g,' ').trim();
+    const iban=(line.match(/\bBH\d{2}[A-Z0-9X\*]{4,30}\b/i)||[])[0]||'';
+    const res=await ingest({ts:parseDate(dm[1]),amount,direction,rawText:line,
+      counterpartyName:desc.slice(0,40),counterpartyIBAN:iban,accountId,sourceChannel:'import',balanceAfter:balance});
+    if(res.added){added++;direction==='in'?credits++:debits++;}else if(res.dup)dup++;
+  }
+  return{added,dup,expenses:debits,income:credits,scanned:lines.length};
 }
 
 /* ----------------------------- 9. Analytics (§6) ----------------------------- */
@@ -768,6 +817,10 @@ function zoomBar(chartKey){
     el('button',{class:'btn ghost sm',style:{width:'auto',padding:'4px 10px'},
       onclick:()=>{try{charts[chartKey]&&charts[chartKey].resetZoom();}catch(e){}}},'⤢ '+t('resetZoom')));
 }
+function compactNum(v){const a=Math.abs(+v||0);
+  if(a>=1e6)return (v/1e6).toFixed(a>=1e7?0:1)+'M';
+  if(a>=1e3)return (v/1e3).toFixed(a>=1e4?0:1)+'k';
+  return a>=10?Math.round(v):(+v).toFixed(1);}
 function baseOpts({legend=false,stacked=false,horizontal=false,zoom=false}={}){
   const plugins={legend:legend?{labels:{color:cssVar('--ink-dim'),boxWidth:12,font:{size:11}}}:{display:false}};
   if(zoom&&window.Hammer){ // pinch/drag zoom + pan on the time (x) axis
@@ -776,10 +829,15 @@ function baseOpts({legend=false,stacked=false,horizontal=false,zoom=false}={}){
       zoom:{wheel:{enabled:true},pinch:{enabled:true},drag:{enabled:false},mode:'x'},
       limits:{x:{min:'original',max:'original',minRange:1}}};
   }
+  // compact tick labels on the VALUE axis only (keeps category labels intact) — fixes the
+  // wide left-margin on iPhone caused by long money labels like "1,190.200"
+  const valTick={color:cssVar('--ink-faint'),maxTicksLimit:5,callback:v=>compactNum(v)};
+  const catTick={color:cssVar('--ink-faint'),autoSkip:true,maxRotation:0};
   return{responsive:true,maintainAspectRatio:false,resizeDelay:120,animation:{duration:300},
-    indexAxis:horizontal?'y':'x',plugins,
-    scales:{x:{stacked,grid:{display:false},ticks:{color:cssVar('--ink-faint'),autoSkip:true,maxRotation:0}},
-      y:{stacked,beginAtZero:true,grid:{color:cssVar('--line-soft')},ticks:{color:cssVar('--ink-faint')}}}};
+    indexAxis:horizontal?'y':'x',plugins,layout:{padding:{top:4,right:6,bottom:0,left:0}},
+    scales:{
+      x:{stacked,grid:{display:false},ticks:horizontal?valTick:catTick},
+      y:{stacked,beginAtZero:true,grid:{color:cssVar('--line-soft')},ticks:horizontal?catTick:valTick}}};
 }
 function pieOpts(){return{cutout:'66%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false,resizeDelay:120,animation:{duration:300}};}
 // presentation presets per insight view
@@ -1407,7 +1465,7 @@ function openImportSheet(){
     s.append(el('div',{class:'spacer'}));
     const accSel=el('select',{},[el('option',{value:''},'—'),...S.accounts.map(a=>el('option',{value:a.id},a.name))]);
     s.append(el('div',{class:'field'},el('label',{},t('assignAccount')),accSel));
-    const fileIn=el('input',{type:'file',accept:'.csv,.xlsx,.xls'});
+    const fileIn=el('input',{type:'file',accept:'.pdf,.csv,.xlsx,.xls'});
     s.append(el('div',{class:'field'},fileIn));
     const out=el('div',{});s.append(out);
     s.append(el('button',{class:'btn',onclick:()=>{
