@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 11 · 2026-06-22';
+const BUILD='build 12 · 2026-06-22';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -289,6 +289,12 @@ const I18N={
     urlStep2:'Add action “URL Encode” on the Shortcut Input. Then “Text”: paste the copied link and replace [SMS] with the URL-Encoded result.',
     urlStep3:'Add action “Open URLs” with that Text. It opens iMaliya and logs the SMS. (Opening a page needs the phone unlocked.)',
     safariNote:'Open iMaliya in Safari (the same place the Shortcut opens) so capture and viewing share the same storage.',
+    filesImport:'Save to Files & import',
+    filesImportSub:'Let the Shortcut append each bank SMS to a file in your Files app (works while locked), then import that file here. Re-importing is safe — duplicates are skipped.',
+    pickFile:'Choose file from Files',
+    fStep1:'Shortcut → Automation → “Message Contains” (your bank words). Run Immediately, Ask Before Running OFF.',
+    fStep2:'Add one action “Append to File”: append the Shortcut Input + a new line to a file in iCloud Drive named imaliya_inbox.txt (Shortcuts creates it). No “Open App” — so it runs even while locked.',
+    fStep3:'Here, tap “Choose file from Files”, pick imaliya_inbox.txt. All new messages import and de-duplicate.',
     presentation:'Chart style',smsGuide:'Set up automatic capture (runs while locked)',trySample:'Try a sample message',
     autoCapture:'Automatic capture',autoCaptureSub:'Logs every bank SMS the instant it arrives — even while your phone is locked, with no need to open the app.',
     connectBridge:'Connect bridge file',syncNow:'Sync now',connected:'Bridge connected',notConnected:'Not connected',lockSafe:'Works on the lock screen',
@@ -341,6 +347,12 @@ const I18N={
     urlStep2:'أضف إجراء «ترميز URL» على مُدخل الاختصار. ثم «نص»: الصق الرابط المنسوخ واستبدل [SMS] بالنتيجة المُرمّزة.',
     urlStep3:'أضف إجراء «فتح عناوين URL» بهذا النص. يفتح iMaliya ويسجّل الرسالة. (فتح الصفحة يتطلب فتح قفل الهاتف.)',
     safariNote:'افتح iMaliya في Safari (نفس المكان الذي يفتحه الاختصار) ليتشارك الالتقاط والعرض نفس التخزين.',
+    filesImport:'الحفظ في الملفات والاستيراد',
+    filesImportSub:'دع الاختصار يُلحق كل رسالة بنك بملف في تطبيق «الملفات» (يعمل والشاشة مقفلة)، ثم استورد الملف هنا. إعادة الاستيراد آمنة — يُتجاهل المكرر.',
+    pickFile:'اختر ملفًا من «الملفات»',
+    fStep1:'الاختصارات ← الأتمتة ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل».',
+    fStep2:'أضف إجراء «إلحاق بملف»: ألحق مُدخل الاختصار + سطرًا جديدًا بملف على iCloud باسم imaliya_inbox.txt (يُنشئه الاختصار). دون «فتح التطبيق» ليعمل والشاشة مقفلة.',
+    fStep3:'هنا اضغط «اختر ملفًا من الملفات»، واختر imaliya_inbox.txt. تُستورد كل الرسائل الجديدة ويُتجاهل المكرر.',
     presentation:'نوع الرسم',smsGuide:'إعداد الالتقاط التلقائي (يعمل والشاشة مقفلة)',trySample:'جرّب رسالة تجريبية',
     autoCapture:'الالتقاط التلقائي',autoCaptureSub:'يسجّل كل رسالة من البنك فور وصولها — حتى والهاتف مقفل، ودون فتح التطبيق.',
     connectBridge:'ربط ملف الجسر',syncNow:'مزامنة الآن',connected:'تم ربط الجسر',notConnected:'غير مربوط',lockSafe:'يعمل وقفل الشاشة مفعّل',
@@ -1532,6 +1544,16 @@ function openSmsSheet(){
           el('div',{class:'av',style:{width:'24px',height:'24px',fontSize:'12px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
           el('div',{style:{fontSize:'13px',lineHeight:'1.5'}},step))),
       el('small',{class:'hint'},'ℹ️ '+t('safariNote'))));
+    // ---- Save-to-Files & import card (reliable local method on iPhone) ----
+    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
+      el('strong',{},'📁 '+t('filesImport')),
+      el('small',{class:'hint',style:{margin:'6px 0 10px'}},t('filesImportSub')),
+      el('button',{class:'btn',onclick:()=>importFromFiles()},'📁 '+t('pickFile')),
+      el('div',{class:'spacer'}),
+      [t('fStep1'),t('fStep2'),t('fStep3')].map((step,i)=>
+        el('div',{class:'flex',style:{alignItems:'flex-start',gap:'9px',marginBottom:'8px'}},
+          el('div',{class:'av',style:{width:'24px',height:'24px',fontSize:'12px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
+          el('div',{style:{fontSize:'13px',lineHeight:'1.5'}},step)))));
     // ---- File-bridge card: only on platforms with File System Access (desktop / Android Chrome) ----
     if(bridgeSupported())
       s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
@@ -1682,10 +1704,17 @@ async function syncBridge(){
     return await ingestSMSBatch(text);}catch(e){return null;}
 }
 function pickBridgeFile(){ // iOS fallback — one tap, auto-imports, dedups
-  const f=el('input',{type:'file',accept:'.json,.txt'});
-  f.onchange=async()=>{const file=f.files[0];if(!file)return;const text=await file.text();
+  importFromFiles();
+}
+// Import the Shortcut's inbox file picked from the iOS Files app (no persistent handle on iOS).
+function importFromFiles(){
+  // broad accept so .txt/.json show in the Files picker on iOS
+  const f=el('input',{type:'file',accept:'.txt,.json,.csv,.log,text/plain,application/json'});
+  f.onchange=async()=>{const file=f.files[0];if(!file)return;
+    let text;try{text=await file.text();}catch(e){toast('Could not read file');return;}
     const res=await ingestSMSBatch(text);closeSheet();go('home');
-    toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);};
+    if(!res||!res.total)toast('⚠︎ '+t('linkNoSms'));
+    else toast(`✓ ${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);};
   f.click();
 }
 async function autoSyncBridge(){ // silent re-sync on launch where the platform allows
