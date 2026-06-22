@@ -270,6 +270,10 @@ const I18N={
     confirmDelete:'Delete this?',erased:'All data erased',saved:'Saved',linkedOk:'Linked & remembered',
     pickAccount:'Select account',addFirstAccount:'Add your first account',noAccounts:'No accounts yet',
     netWorth:'Net worth',thisYear:'this year',transfersExcluded:'Internal transfers excluded from spend',
+    vsPrev:'vs prev',projected:'Projected',projNote:'at current pace',topCat:'Top category',
+    biggestTxn:'Biggest',searchPh:'Search payee, note, category…',noSpendDays:'no-spend days',
+    highlights:'Highlights',spendUp:'Spending up',spendDown:'Spending down',flat:'flat vs last period',
+    avgTxn:'Avg / txn',
     presentation:'Chart style',smsGuide:'Set up automatic capture (runs while locked)',trySample:'Try a sample message',
     autoCapture:'Automatic capture',autoCaptureSub:'Logs every bank SMS the instant it arrives — even while your phone is locked, with no need to open the app.',
     connectBridge:'Connect bridge file',syncNow:'Sync now',connected:'Bridge connected',notConnected:'Not connected',lockSafe:'Works on the lock screen',
@@ -310,6 +314,10 @@ const I18N={
     confirmDelete:'حذف هذا؟',erased:'تم مسح البيانات',saved:'تم الحفظ',linkedOk:'تم الربط والتذكّر',
     pickAccount:'اختر الحساب',addFirstAccount:'أضف حسابك الأول',noAccounts:'لا حسابات بعد',
     netWorth:'صافي الثروة',thisYear:'هذا العام',transfersExcluded:'التحويلات الداخلية مستثناة',
+    vsPrev:'مقابل السابق',projected:'متوقع',projNote:'بالمعدل الحالي',topCat:'أعلى فئة',
+    biggestTxn:'الأكبر',searchPh:'ابحث عن جهة أو فئة…',noSpendDays:'أيام بلا صرف',
+    highlights:'أبرز النقاط',spendUp:'ارتفاع الصرف',spendDown:'انخفاض الصرف',flat:'مستقر مقابل السابق',
+    avgTxn:'متوسط الحركة',
     presentation:'نوع الرسم',smsGuide:'إعداد الالتقاط التلقائي (يعمل والشاشة مقفلة)',trySample:'جرّب رسالة تجريبية',
     autoCapture:'الالتقاط التلقائي',autoCaptureSub:'يسجّل كل رسالة من البنك فور وصولها — حتى والهاتف مقفل، ودون فتح التطبيق.',
     connectBridge:'ربط ملف الجسر',syncNow:'مزامنة الآن',connected:'تم ربط الجسر',notConnected:'غير مربوط',lockSafe:'يعمل وقفل الشاشة مفعّل',
@@ -570,7 +578,13 @@ async function ingestSMSBatch(blob){
   // blob may be multiple messages separated by blank lines, or JSON bridge array
   let msgs=[];
   const trimmed=blob.trim();
-  const asMsg=o=>({text:o.text||o.body||o.message||String(o),ts:o.ts?new Date(o.ts).getTime():Date.now()});
+  // An entry can be RAW {text,ts} (app parses) OR a pre-PARSED record {amount,direction,...}
+  // written by the Scriptable headless capture (no re-parsing needed).
+  const asMsg=o=>{
+    if(o&&typeof o==='object'&&o.amount!=null)
+      return {record:{...o,ts:o.ts?new Date(o.ts).getTime():Date.now()}};
+    return {text:(o&&(o.text||o.body||o.message))||String(o),ts:(o&&o.ts)?new Date(o.ts).getTime():Date.now()};
+  };
   if(trimmed.startsWith('[')){ // JSON array (whole-file)
     try{msgs=JSON.parse(trimmed).map(asMsg);}catch(e){msgs=[{text:blob,ts:Date.now()}];}
   }else if(/^\s*\{[\s\S]*\}\s*$/.test(trimmed)&&!/\}\s*\n\s*\{/.test(trimmed)){ // single JSON object
@@ -582,7 +596,10 @@ async function ingestSMSBatch(blob){
     msgs=trimmed.split(/\n\s*\n/).filter(s=>s.trim()).map(s=>({text:s.trim(),ts:Date.now()}));
   }
   let added=0,dup=0;
-  for(const m of msgs){const p=parseSMS(m.text,m.ts);if(!p.amount)continue;
+  for(const m of msgs){
+    let p;
+    if(m.record){p=m.record;p.sourceChannel=p.sourceChannel||'sms';}
+    else{p=parseSMS(m.text,m.ts);if(!p.amount)continue;}
     const r=await ingest(p);if(r.added)added++;else if(r.dup)dup++;}
   return{added,dup,total:msgs.length};
 }
@@ -672,6 +689,37 @@ function periodRange(grain,offset=0){
   return{start:start.getTime(),end:end.getTime()};
 }
 function txnsIn(range){return S.txns.filter(x=>x.ts>=range.start&&x.ts<range.end);}
+// --- period navigation helpers (zoom + arrows + year) ---
+function stepDate(grain,date,n){const d=new Date(date);
+  if(grain==='day')d.setDate(d.getDate()+n);
+  else if(grain==='week')d.setDate(d.getDate()+7*n);
+  else if(grain==='month')d.setMonth(d.getMonth()+n);
+  else if(grain==='quarter')d.setMonth(d.getMonth()+3*n);
+  else d.setFullYear(d.getFullYear()+n);
+  return d;}
+function gRange(grain,date){const now=new Date(date);let start,end;
+  if(grain==='day'){start=startOfDay(now);end=new Date(start);end.setDate(end.getDate()+1);}
+  else if(grain==='week'){start=startOfDay(now);start.setDate(start.getDate()-start.getDay());end=new Date(start);end.setDate(end.getDate()+7);}
+  else if(grain==='month'){start=new Date(now.getFullYear(),now.getMonth(),1);end=new Date(now.getFullYear(),now.getMonth()+1,1);}
+  else if(grain==='quarter'){const q=Math.floor(now.getMonth()/3);start=new Date(now.getFullYear(),q*3,1);end=new Date(now.getFullYear(),q*3+3,1);}
+  else{start=new Date(now.getFullYear(),0,1);end=new Date(now.getFullYear()+1,0,1);}
+  return{start:start.getTime(),end:end.getTime()};}
+function anchorDateFor(grain,offset){return stepDate(grain,new Date(),offset);}
+function periodLabel(grain,anchor){const loc=LANG==='ar'?'ar-BH':'en-GB';const d=new Date(anchor);
+  if(grain==='day')return d.toLocaleDateString(loc,{day:'numeric',month:'short',year:'numeric'});
+  if(grain==='week'){const r=gRange('week',d),s=new Date(r.start),e=new Date(r.end-1);
+    return s.toLocaleDateString(loc,{day:'numeric',month:'short'})+' – '+e.toLocaleDateString(loc,{day:'numeric',month:'short',year:'numeric'});}
+  if(grain==='month')return d.toLocaleDateString(loc,{month:'long',year:'numeric'});
+  if(grain==='quarter')return 'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear();
+  return ''+d.getFullYear();}
+// inner buckets that COMPOSE the anchor period (year->12 months, quarter->3, month->days, week->7 days)
+function composingRanges(grain,anchor){const loc=LANG==='ar'?'ar-BH':'en-GB';const d=new Date(anchor),out=[];
+  const push=(s,e,label)=>out.push({start:s.getTime(),end:e.getTime(),label});
+  if(grain==='year'){const y=d.getFullYear();for(let m=0;m<12;m++)push(new Date(y,m,1),new Date(y,m+1,1),new Date(y,m,1).toLocaleDateString(loc,{month:'short'}));}
+  else if(grain==='quarter'){const q=Math.floor(d.getMonth()/3),y=d.getFullYear();for(let i=0;i<3;i++)push(new Date(y,q*3+i,1),new Date(y,q*3+i+1,1),new Date(y,q*3+i,1).toLocaleDateString(loc,{month:'short'}));}
+  else if(grain==='month'){const y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate();for(let dd=1;dd<=days;dd++)push(new Date(y,m,dd),new Date(y,m,dd+1),''+dd);}
+  else{const r=gRange('week',d);for(let i=0;i<7;i++){const s=new Date(r.start);s.setDate(s.getDate()+i);const e=new Date(s);e.setDate(e.getDate()+1);push(s,e,s.toLocaleDateString(loc,{weekday:'short'}));}}
+  return out;}
 function sumSpend(txns){return txns.filter(x=>x.direction==='out'&&!x.isTransfer).reduce((s,x)=>s+x.amount,0);}
 function sumIncome(txns){return txns.filter(x=>x.direction==='in'&&!x.isTransfer).reduce((s,x)=>s+x.amount,0);}
 function totalBalance(){
@@ -836,40 +884,70 @@ function emptyState(){return el('div',{class:'empty'},el('div',{class:'e-ic'},'�
   el('div',{style:{fontWeight:700,marginBottom:'4px'}},t('noData')),el('div',{},t('startBy')));}
 
 /* ---- TRANSACTIONS ---- */
-let txnFilter='all';
+let txnFilter='all';let txnSearch='';
 function viewTxns(root){
   const v=el('div',{class:'view'});
+  // search box
+  const search=el('input',{type:'search',value:txnSearch,placeholder:'🔎 '+t('searchPh'),
+    style:{width:'100%',padding:'11px 13px',borderRadius:'12px',background:'var(--bg-2)',
+      border:'1px solid var(--line)',color:'var(--ink)',marginBottom:'10px'},
+    oninput:e=>{txnSearch=e.target.value;clearTimeout(window.__sd);window.__sd=setTimeout(()=>renderTxnList(),200);}});
+  v.append(search);
   const filters=el('div',{class:'chips'},['all','in','out','review'].map(f=>
-    el('button',{class:'chip'+(txnFilter===f?' on':''),onclick:()=>{txnFilter=f;go('transactions');}},t(f))));
+    el('button',{class:'chip'+(txnFilter===f?' on':''),onclick:()=>{txnFilter=f;renderTxnList();}},t(f))));
   v.append(filters);v.append(el('div',{class:'spacer'}));
+  const listWrap=el('div',{id:'txnListWrap'});v.append(listWrap);
+  root.append(v);
+  renderTxnList();
+  // keep focus + caret after re-render not needed since list is separate
+}
+function renderTxnList(){
+  const listWrap=$('#txnListWrap');if(!listWrap)return;
+  const v=listWrap.parentElement;
+  // refresh filter-chip highlight (the chips row is the first .chips before the list)
+  const chipRow=$$('.chips',v)[0];
+  if(chipRow)[...chipRow.children].forEach((b,i)=>{const f=['all','in','out','review'][i];if(f)b.className='chip'+(txnFilter===f?' on':'');});
+  listWrap.innerHTML='';
   let list=S.txns.slice();
   if(txnFilter==='in')list=list.filter(x=>x.direction==='in');
   else if(txnFilter==='out')list=list.filter(x=>x.direction==='out');
   else if(txnFilter==='review')list=list.filter(x=>(x.confidence||0)<0.5&&!x.isTransfer);
-  // group by day
+  const q=txnSearch.trim().toLowerCase();
+  if(q)list=list.filter(x=>((x.counterpartyName||'')+' '+(x.rawText||'')+' '+catName(x.category)+' '+(x.counterpartyIBAN||'')).toLowerCase().includes(q));
   const groups={};list.forEach(x=>{(groups[todayKey(new Date(x.ts))]=groups[todayKey(new Date(x.ts))]||[]).push(x);});
   const keys=Object.keys(groups).sort().reverse();
-  if(!keys.length){v.append(el('div',{class:'card'},emptyState()));root.append(v);return;}
+  if(!keys.length){listWrap.append(el('div',{class:'card'},emptyState()));return;}
   keys.forEach(k=>{
-    const dayTx=groups[k];
-    const daySpend=sumSpend(dayTx);
-    v.append(el('div',{class:'section-title flex between'},
+    const dayTx=groups[k];const daySpend=sumSpend(dayTx);
+    listWrap.append(el('div',{class:'section-title flex between'},
       el('span',{},relDate(new Date(k+'T12:00:00').getTime())),
       el('span',{class:'mono faint'},daySpend?'−'+money(daySpend):'')));
     const card=el('div',{class:'card flush'});
     dayTx.forEach(x=>card.append(txnRow(x)));
-    v.append(card);});
-  root.append(v);
+    listWrap.append(card);});
 }
 
 /* ---- INSIGHTS ---- */
 let insightView='cashflow';
+let insightOffset=0;
 function viewInsights(root){
   const v=el('div',{class:'view'});
-  // grain selector
+  // grain selector (zoom level — resets navigation when changed)
   v.append(el('div',{class:'seg'},['week','month','quarter','year'].map(g=>
-    el('button',{class:dashGrain===g?'on':'',onclick:()=>{dashGrain=g;destroyCharts();go('insights');}},t(g)))));
+    el('button',{class:dashGrain===g?'on':'',onclick:()=>{dashGrain=g;insightOffset=0;destroyCharts();go('insights');}},t(g)))));
   v.append(el('div',{class:'spacer'}));
+
+  // period navigator: ‹ prev | label (with year) | next › — RTL-aware via flex order
+  const anchor=anchorDateFor(dashGrain,insightOffset);
+  const r=gRange(dashGrain,anchor);
+  const prevR=gRange(dashGrain,stepDate(dashGrain,anchor,-1));
+  v.append(el('div',{class:'flex between card',style:{padding:'8px 12px',marginBottom:'12px'}},
+    el('button',{class:'iconbtn',onclick:()=>{insightOffset--;destroyCharts();go('insights');}},'‹'),
+    el('div',{class:'center grow'},el('div',{style:{fontWeight:800,fontSize:'15px'}},periodLabel(dashGrain,anchor)),
+      el('div',{class:'faint',style:{fontSize:'11px'}},insightOffset===0?t('today'):'')),
+    el('button',{class:'iconbtn',style:insightOffset>=0?{opacity:.3,pointerEvents:'none'}:{},
+      onclick:()=>{insightOffset++;destroyCharts();go('insights');}},'›')));
+
   v.append(el('div',{class:'chips'},
     [['cashflow','cashflow'],['categoryBreakdown','category'],['trend','trend'],['calendar','calendar'],['counterparties','payees']]
     .map(([label,id])=>el('button',{class:'chip'+(insightView===id?' on':''),onclick:()=>{insightView=id;destroyCharts();go('insights');}},t(label)))));
@@ -884,17 +962,33 @@ function viewInsights(root){
     v.append(el('div',{class:'spacer'}));
   }
 
-  const r=periodRange(dashGrain);const tx=txnsIn(r);
-  const inc=sumIncome(tx),spend=sumSpend(tx);
+  const tx=txnsIn(r),prevTx=txnsIn(prevR);
+  const inc=sumIncome(tx),spend=sumSpend(tx),pInc=sumIncome(prevTx),pSpend=sumSpend(prevTx);
+  const pct=(c,p)=>{if(!p)return'';const d=Math.round((c-p)/p*100);return(d>0?'▲':d<0?'▼':'')+Math.abs(d)+'% '+t('vsPrev');};
   v.append(el('div',{class:'stat-grid'},
-    el('div',{class:'stat'},el('div',{class:'k'},t('income')),el('div',{class:'v pos mono'},money(inc))),
-    el('div',{class:'stat'},el('div',{class:'k'},t('spending')),el('div',{class:'v neg mono'},money(spend)))));
+    el('div',{class:'stat'},el('div',{class:'k'},t('income')),el('div',{class:'v pos mono'},money(inc)),
+      el('div',{class:'faint',style:{fontSize:'11px'}},pct(inc,pInc))),
+    el('div',{class:'stat'},el('div',{class:'k'},t('spending')),el('div',{class:'v neg mono'},money(spend)),
+      el('div',{class:'faint',style:{fontSize:'11px'}},pct(spend,pSpend)))));
+
+  // creative: auto highlight cards (deltas, projection, top category, biggest, no-spend)
+  const cards=buildHighlights(tx,r,spend,pSpend);
+  if(cards.length){
+    v.append(el('div',{class:'section-title'},t('highlights')));
+    const wrap=el('div',{class:'chips',style:{paddingBottom:'4px'}});
+    cards.forEach(c=>wrap.append(el('div',{style:{flexShrink:'0',minWidth:'150px',background:'var(--card)',
+      border:'1px solid var(--line-soft)',borderRadius:'14px',padding:'12px'}},
+      el('div',{style:{fontSize:'20px'}},c.icon),
+      el('div',{class:c.tone||'',style:{fontWeight:750,fontSize:'13.5px',marginTop:'4px'}},c.title),
+      c.sub?el('div',{class:'faint',style:{fontSize:'12px',marginTop:'2px'}},c.sub):'')));
+    v.append(wrap);v.append(el('div',{class:'spacer'}));
+  }
 
   const card=el('div',{class:'card'});
-  if(insightView==='cashflow')renderCashflow(card);
+  if(insightView==='cashflow')renderCashflow(card,anchor);
   else if(insightView==='category')renderCategory(card,tx);
-  else if(insightView==='trend')renderTrend(card);
-  else if(insightView==='calendar')renderCalendar(card);
+  else if(insightView==='trend')renderTrend(card,anchor,tx);
+  else if(insightView==='calendar')renderCalendar(card,anchor);
   else if(insightView==='payees')renderPayees(card,tx);
   v.append(card);
 
@@ -910,14 +1004,32 @@ function viewInsights(root){
     v.append(sc);}
   root.append(v);
 }
-function renderCashflow(card){
-  const labels=[],incData=[],spendData=[];
-  const span=dashGrain==='year'?12:dashGrain==='quarter'?3:dashGrain==='month'?6:8;
-  const innerGrain=dashGrain==='year'?'month':dashGrain==='week'?'day':'month';
-  for(let i=span-1;i>=0;i--){const rr=periodRange(innerGrain,-i);const tx=txnsIn(rr);
-    const d=new Date(rr.start);
-    labels.push(innerGrain==='day'?d.toLocaleDateString(undefined,{weekday:'short'}):d.toLocaleDateString(undefined,{month:'short'}));
-    incData.push(sumIncome(tx));spendData.push(sumSpend(tx));}
+// auto-generated insight cards for the active period
+function buildHighlights(tx,r,spend,pSpend){
+  const cards=[];
+  if(pSpend>0){const d=Math.round((spend-pSpend)/pSpend*100);if(Math.abs(d)>=5)
+    cards.push({icon:d>0?'📈':'📉',tone:d>0?'neg':'pos',title:(d>0?t('spendUp'):t('spendDown'))+' '+Math.abs(d)+'%',sub:t('vsPrev')+' '+money(pSpend)});}
+  if(dashGrain==='month'&&insightOffset===0){const now=Date.now();
+    const days=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+    const elapsed=clamp(Math.ceil((now-r.start)/86400000),1,days);
+    cards.push({icon:'🔮',tone:'',title:t('projected')+' '+money(spend/elapsed*days),sub:t('projNote')});}
+  const cats=categoryTotals(tx);
+  if(cats.length)cards.push({icon:cats[0].icon,tone:'',title:t('topCat'),sub:cats[0].name+' · '+money(cats[0].v)});
+  const big=tx.filter(x=>x.direction==='out'&&!x.isTransfer).sort((a,b)=>b.amount-a.amount)[0];
+  if(big)cards.push({icon:'💥',tone:'',title:t('biggestTxn'),sub:(big.counterpartyName||catName(big.category))+' · '+money(big.amount)});
+  if(dashGrain==='month'){const dayset=new Set(tx.filter(x=>x.direction==='out'&&!x.isTransfer).map(x=>new Date(x.ts).getDate()));
+    const dim=new Date(new Date(r.start).getFullYear(),new Date(r.start).getMonth()+1,0).getDate();
+    const upto=insightOffset===0?new Date().getDate():dim;
+    cards.push({icon:'🟢',tone:'pos',title:Math.max(0,upto-dayset.size)+' '+t('noSpendDays'),sub:''});}
+  const outc=tx.filter(x=>x.direction==='out'&&!x.isTransfer).length;
+  if(outc)cards.push({icon:'🧾',tone:'',title:t('avgTxn'),sub:money(spend/outc)+' · '+outc+' '+t('transactionsCount')});
+  return cards;
+}
+function renderCashflow(card,anchor){
+  const ranges=composingRanges(dashGrain,anchor);
+  const labels=ranges.map(x=>x.label);
+  const incData=ranges.map(x=>sumIncome(txnsIn(x)));
+  const spendData=ranges.map(x=>sumSpend(txnsIn(x)));
   card.append(el('strong',{},t('cashflow')));
   const{box,cv}=chartBox();card.append(box);
   const ty=chartType.cashflow,kind=ty==='bar'?'bar':'line',isArea=ty==='area';
@@ -950,13 +1062,12 @@ function renderCategory(card,tx){
       data:{labels:cats.map(c=>c.name),datasets:[{data:cats.map(c=>c.v),backgroundColor:PALETTE,borderWidth:0}]},
       options:{...pieOpts(),cutout:ty==='pie'?0:'66%'}});}},0);
 }
-function renderTrend(card){
-  // stacked area per top category over last 6 months
-  const top=categoryTotals(txnsIn(periodRange('year'))).slice(0,5).map(c=>c.id);
-  const labels=[];const series=top.map(()=>[]);
-  for(let i=5;i>=0;i--){const rr=periodRange('month',-i);const tx=txnsIn(rr);
-    labels.push(new Date(rr.start).toLocaleDateString(undefined,{month:'short'}));
-    top.forEach((cid,si)=>{series[si].push(tx.filter(x=>x.category===cid&&x.direction==='out'&&!x.isTransfer).reduce((s,x)=>s+x.amount,0));});}
+function renderTrend(card,anchor,tx){
+  // stacked spend per top category, broken into the periods composing the current view
+  const top=categoryTotals(tx).slice(0,5).map(c=>c.id);
+  const ranges=composingRanges(dashGrain,anchor);
+  const labels=ranges.map(x=>x.label);
+  const series=top.map(cid=>ranges.map(rg=>txnsIn(rg).filter(x=>x.category===cid&&x.direction==='out'&&!x.isTransfer).reduce((s,x)=>s+x.amount,0)));
   card.append(el('strong',{},t('trend')));
   if(!top.length){card.append(emptyState());return;}
   const{box,cv}=chartBox();card.append(box);
@@ -966,13 +1077,14 @@ function renderTrend(card){
       backgroundColor:ty==='bar'?PALETTE[i]:PALETTE[i]+'33',fill,tension:.35,pointRadius:kind==='line'?2:0}))},
     options:baseOpts({legend:true,stacked})});},0);
 }
-function renderCalendar(card){
-  const now=new Date();const year=now.getFullYear(),month=now.getMonth();
+function renderCalendar(card,anchor){
+  const d0=new Date(anchor);const year=d0.getFullYear(),month=d0.getMonth();
+  const mr=gRange('month',d0);
   const first=new Date(year,month,1);const days=new Date(year,month+1,0).getDate();
-  const byDay={};txnsIn(periodRange('month')).filter(x=>x.direction==='out'&&!x.isTransfer)
+  const byDay={};txnsIn(mr).filter(x=>x.direction==='out'&&!x.isTransfer)
     .forEach(x=>{const d=new Date(x.ts).getDate();byDay[d]=(byDay[d]||0)+x.amount;});
   const max=Math.max(1,...Object.values(byDay));
-  card.append(el('strong',{},now.toLocaleDateString(undefined,{month:'long',year:'numeric'})));
+  card.append(el('strong',{},first.toLocaleDateString(LANG==='ar'?'ar-BH':'en-GB',{month:'long',year:'numeric'})));
   const grid=el('div',{class:'cal',style:{marginTop:'10px'}});
   ['S','M','T','W','T','F','S'].forEach(d=>grid.append(el('div',{class:'dow'},d)));
   for(let i=0;i<first.getDay();i++)grid.append(el('div',{}));
@@ -982,7 +1094,7 @@ function renderCalendar(card){
     if(v)cell.title=money(v);
     grid.append(cell);}
   card.append(grid);
-  card.append(el('small',{class:'hint'},t('calendar')+' · '+money(sumSpend(txnsIn(periodRange('month'))))+' '+t('thisMonth')));
+  card.append(el('small',{class:'hint'},t('calendar')+' · '+money(sumSpend(txnsIn(mr)))));
 }
 function renderPayees(card,tx){
   const cps=counterpartyTotals(tx).slice(0,12);
@@ -1478,10 +1590,21 @@ async function boot(){
   $('#btnLang').onclick=toggleLang;
   $('#btnSettings').onclick=()=>go('more');
   $('#fab').onclick=()=>openTxnSheet();
+  // public hook: a Scriptable host (or any embedder) can push captured SMS into a live app
+  window.imaliyaIngest=async data=>{
+    const res=await ingestSMSBatch(typeof data==='string'?data:JSON.stringify(data));
+    if(res&&res.added){go(currentTab);toast(`↻ ${res.added} ${t('imported')}`);}
+    return res;};
   setupLock();
   go('home');
-  // pull in anything the auto-capture Shortcut logged while the app was closed/locked
+  // pull in anything the auto-capture automation logged while the app was closed/locked.
+  // 1) Scriptable-hosted WebView injects captured records straight into the page (no picker):
+  if(window.__IMALIYA_BRIDGE__){try{const b=window.__IMALIYA_BRIDGE__;delete window.__IMALIYA_BRIDGE__;
+    const res=await ingestSMSBatch(typeof b==='string'?b:JSON.stringify(b));
+    if(res&&res.added){go(currentTab);toast(`↻ ${res.added} ${t('imported')}`);}}catch(e){}}
+  // 2) a Shortcut that opens the app can pipe data via ?sms= / #sms=
   await ingestFromURL();
+  // 3) standalone Safari PWA: re-read a connected bridge file where the platform allows
   await autoSyncBridge();
   // register a minimal service worker for offline shell
   if('serviceWorker' in navigator){
