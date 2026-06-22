@@ -155,6 +155,7 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .mono{font-variant-numeric:tabular-nums}
 .divider{height:1px;background:var(--line-soft);margin:14px 0}
 canvas{max-width:100%}
+.chartbox{position:relative;width:100%;height:220px;margin:10px 0 4px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal .d{aspect-ratio:1;border-radius:7px;display:grid;place-items:center;font-size:10px;color:var(--ink-faint);position:relative}
 .cal .dow{font-size:10px;color:var(--ink-faint);text-align:center;font-weight:700;padding-bottom:2px}
@@ -268,8 +269,14 @@ const I18N={
     monthlyBudget:'Monthly budget',setBudget:'Set monthly budget',leftToSpend:'left to spend',
     confirmDelete:'Delete this?',erased:'All data erased',saved:'Saved',linkedOk:'Linked & remembered',
     pickAccount:'Select account',addFirstAccount:'Add your first account',noAccounts:'No accounts yet',
-    netWorth:'Net worth',thisYear:'this year',transfersExcluded:'Internal transfers excluded from spend'},
-  ar:{appName:'iMaliya',home:'الرئيسية',transactions:'الحركات',insights:'التحليلات',accounts:'الحسابات',more:'المزيد',
+    netWorth:'Net worth',thisYear:'this year',transfersExcluded:'Internal transfers excluded from spend',
+    presentation:'Chart style',smsGuide:'How SMS capture works',trySample:'Try a sample message',
+    smsStep1:'In Shortcuts, create a Personal Automation → “Message Contains”. Add trigger words: debited, credited, purchase, Fawri, salary, خصم, شراء, إيداع, راتب.',
+    smsStep2:'Set it to Run Immediately (turn off “Ask Before Running”) so it fires silently on each bank SMS.',
+    smsStep3:'Add one action — Append to File — writing the message text + date as a JSON line to imaliya_bridge.json in iCloud Drive. Keep the Shortcut thin; no parsing inside it.',
+    smsStep4:'Open iMaliya, paste the bridge file (or any SMS) here, and tap Parse. iMaliya reads amount, direction, IBAN, balance & payee — and dedups automatically.',
+    smsNote:'iOS blocks apps from reading the SMS inbox directly, so this Shortcut bridge is the supported path. Apple Pay taps can feed the same file via the iOS-17 “Transaction” automation.'},
+  ar:{appName:'iMaliya',home:'الرئيسية',transactions:'التحركات',insights:'التحليلات',accounts:'الحسابات',more:'المزيد',
     safeToSpend:'المتاح للصرف',thisMonth:'هذا الشهر',income:'الدخل',spending:'المصروفات',net:'الصافي',balance:'الرصيد',
     recentActivity:'آخر الحركات',seeAll:'عرض الكل',needsReview:'بحاجة لمراجعة',unlinkedIban:'آيبان جديد',
     linkIt:'ربط',addTransaction:'إضافة حركة',expense:'مصروف',transfer:'تحويل',amount:'المبلغ',
@@ -300,7 +307,13 @@ const I18N={
     monthlyBudget:'الميزانية الشهرية',setBudget:'تعيين ميزانية',leftToSpend:'متبقٍ للصرف',
     confirmDelete:'حذف هذا؟',erased:'تم مسح البيانات',saved:'تم الحفظ',linkedOk:'تم الربط والتذكّر',
     pickAccount:'اختر الحساب',addFirstAccount:'أضف حسابك الأول',noAccounts:'لا حسابات بعد',
-    netWorth:'صافي الثروة',thisYear:'هذا العام',transfersExcluded:'التحويلات الداخلية مستثناة'}
+    netWorth:'صافي الثروة',thisYear:'هذا العام',transfersExcluded:'التحويلات الداخلية مستثناة',
+    presentation:'نوع الرسم',smsGuide:'كيف يتم التقاط الرسائل',trySample:'جرّب رسالة تجريبية',
+    smsStep1:'في تطبيق الاختصارات، أنشئ أتمتة شخصية ← «الرسالة تحتوي». أضف كلمات التفعيل: خصم، شراء، إيداع، راتب، Fawri، debited، credited.',
+    smsStep2:'اجعلها «تشغيل فوري» (أوقف «اسأل قبل التشغيل») لتعمل بصمت مع كل رسالة من البنك.',
+    smsStep3:'أضف إجراءً واحدًا — «إلحاق بملف» — يكتب نص الرسالة والتاريخ كسطر JSON في ملف imaliya_bridge.json على iCloud. أبقِ الاختصار بسيطًا دون أي تحليل بداخله.',
+    smsStep4:'افتح iMaliya، الصق محتوى الملف (أو أي رسالة) هنا واضغط «تحليل». يقرأ iMaliya المبلغ والاتجاه والآيبان والرصيد والجهة، ويتجاهل المكرر تلقائيًا.',
+    smsNote:'يمنع iOS التطبيقات من قراءة صندوق الرسائل مباشرة، لذا فإن جسر الاختصارات هو الطريقة المدعومة. كما يمكن لمدفوعات Apple Pay تغذية نفس الملف عبر أتمتة «المعاملة» في iOS 17.'}
 };
 let LANG=localStorage.getItem('iml.lang')||'en';
 const t=k=>(I18N[LANG]&&I18N[LANG][k])||I18N.en[k]||k;
@@ -685,6 +698,25 @@ function safeToSpend(){
 const PALETTE=['#00d3a7','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#a3e635','#e879f9','#64748b'];
 let charts={};
 function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
+// Fixed-height container prevents the responsive-canvas feedback loop (infinite y growth)
+function chartBox(h=220){const box=el('div',{class:'chartbox'});box.style.height=h+'px';
+  const cv=el('canvas',{});box.append(cv);return{box,cv};}
+function baseOpts({legend=false,stacked=false,horizontal=false}={}){
+  return{responsive:true,maintainAspectRatio:false,resizeDelay:120,animation:{duration:300},
+    indexAxis:horizontal?'y':'x',
+    plugins:{legend:legend?{labels:{color:cssVar('--ink-dim'),boxWidth:12,font:{size:11}}}:{display:false}},
+    scales:{x:{stacked,grid:{display:false},ticks:{color:cssVar('--ink-faint')}},
+      y:{stacked,beginAtZero:true,grid:{color:cssVar('--line-soft')},ticks:{color:cssVar('--ink-faint')}}}};
+}
+function pieOpts(){return{cutout:'66%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false,resizeDelay:120,animation:{duration:300}};}
+// presentation presets per insight view
+const CHART_PRESETS={
+  cashflow:[['bar','📊'],['line','📈'],['area','🟦']],
+  category:[['doughnut','🍩'],['pie','🥧'],['bar','📊']],
+  trend:[['area','🟦'],['line','📈'],['bar','📊']],
+  payees:[['bar','📊'],['doughnut','🍩']],
+};
+let chartType={cashflow:'bar',category:'doughnut',trend:'area',payees:'bar'};
 
 /* ----------------------------- 10. Router / Views ----------------------------- */
 let currentTab='home';
@@ -760,14 +792,14 @@ function viewHome(root){
   if(cats.length){
     v.append(el('div',{class:'section-title'},t('categoryBreakdown')));
     const card=el('div',{class:'card'});
-    const cv=el('canvas',{height:'180'});card.append(cv);
+    const{box,cv}=chartBox(180);card.append(box);
     cats.forEach((c,i)=>card.append(el('div',{class:'flex between',style:{padding:'5px 2px'}},
       el('div',{class:'flex'},el('span',{},c.icon),el('span',{},c.name)),
       el('span',{class:'mono muted'},money(c.v)))));
     v.append(card);
     setTimeout(()=>{charts.homeDonut=new Chart(cv,{type:'doughnut',
       data:{labels:cats.map(c=>c.name),datasets:[{data:cats.map(c=>c.v),backgroundColor:PALETTE,borderWidth:0}]},
-      options:{cutout:'68%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});},0);
+      options:{...pieOpts(),cutout:'68%'}});},0);
   }
 
   // recent activity
@@ -835,6 +867,15 @@ function viewInsights(root){
     .map(([label,id])=>el('button',{class:'chip'+(insightView===id?' on':''),onclick:()=>{insightView=id;destroyCharts();go('insights');}},t(label)))));
   v.append(el('div',{class:'spacer'}));
 
+  // presentation (chart type) switcher — applies to every chart view, not just trend
+  const presets=CHART_PRESETS[insightView];
+  if(presets){
+    v.append(el('div',{class:'chips'},presets.map(([ty,ic])=>
+      el('button',{class:'chip'+(chartType[insightView]===ty?' on':''),
+        onclick:()=>{chartType[insightView]=ty;destroyCharts();go('insights');}},ic))));
+    v.append(el('div',{class:'spacer'}));
+  }
+
   const r=periodRange(dashGrain);const tx=txnsIn(r);
   const inc=sumIncome(tx),spend=sumSpend(tx);
   v.append(el('div',{class:'stat-grid'},
@@ -869,22 +910,22 @@ function renderCashflow(card){
     const d=new Date(rr.start);
     labels.push(innerGrain==='day'?d.toLocaleDateString(undefined,{weekday:'short'}):d.toLocaleDateString(undefined,{month:'short'}));
     incData.push(sumIncome(tx));spendData.push(sumSpend(tx));}
-  const cv=el('canvas',{height:'220'});card.append(el('div',{class:'flex between',style:{marginBottom:'8px'}},
-    el('strong',{},t('cashflow')),el('span',{class:'faint',style:{fontSize:'12px'}},'')));card.append(cv);
-  setTimeout(()=>{charts.cf=new Chart(cv,{type:'bar',
+  card.append(el('strong',{},t('cashflow')));
+  const{box,cv}=chartBox();card.append(box);
+  const ty=chartType.cashflow,kind=ty==='bar'?'bar':'line',isArea=ty==='area';
+  setTimeout(()=>{charts.cf=new Chart(cv,{type:kind,
     data:{labels,datasets:[
-      {label:t('income'),data:incData,backgroundColor:'#34d399',borderRadius:6},
-      {label:t('spending'),data:spendData,backgroundColor:'#f87171',borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:cssVar('--ink-dim')}}},
-      scales:{x:{grid:{display:false},ticks:{color:cssVar('--ink-faint')}},
-        y:{grid:{color:cssVar('--line-soft')},ticks:{color:cssVar('--ink-faint')}}}}});},0);
+      {label:t('income'),data:incData,borderColor:'#34d399',backgroundColor:isArea?'rgba(52,211,153,.25)':'#34d399',borderRadius:6,fill:isArea,tension:.35,pointRadius:kind==='line'?2:0},
+      {label:t('spending'),data:spendData,borderColor:'#f87171',backgroundColor:isArea?'rgba(248,113,113,.25)':'#f87171',borderRadius:6,fill:isArea,tension:.35,pointRadius:kind==='line'?2:0}]},
+    options:baseOpts({legend:true})});},0);
 }
 function renderCategory(card,tx){
   const cats=categoryTotals(tx);
   if(!cats.length){card.append(emptyState());return;}
-  const cv=el('canvas',{height:'200'});card.append(el('strong',{},t('categoryBreakdown')));card.append(cv);
-  const total=cats.reduce((s,c)=>s+c.v,0);
+  card.append(el('strong',{},t('categoryBreakdown')));
+  const ty=chartType.category;
+  const{box,cv}=chartBox(ty==='bar'?Math.max(180,cats.length*30):210);card.append(box);
+  const total=cats.reduce((s,c)=>s+c.v,0)||1;
   cats.forEach((c,i)=>{
     const pct=Math.round(c.v/total*100);
     const row=el('div',{style:{padding:'7px 0'}},
@@ -893,9 +934,13 @@ function renderCategory(card,tx){
         el('span',{class:'mono'},money(c.v))));
     const bar=el('div',{class:'bar-track'});bar.append(el('div',{class:'bar-fill',style:{width:pct+'%',background:PALETTE[i%PALETTE.length]}}));
     row.append(bar);card.append(row);});
-  setTimeout(()=>{charts.cat=new Chart(cv,{type:'doughnut',
-    data:{labels:cats.map(c=>c.name),datasets:[{data:cats.map(c=>c.v),backgroundColor:PALETTE,borderWidth:0}]},
-    options:{cutout:'66%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false}});},0);
+  setTimeout(()=>{
+    if(ty==='bar'){charts.cat=new Chart(cv,{type:'bar',
+      data:{labels:cats.map(c=>c.name),datasets:[{data:cats.map(c=>c.v),backgroundColor:cats.map((c,i)=>PALETTE[i%PALETTE.length]),borderRadius:6}]},
+      options:baseOpts({horizontal:true})});}
+    else{charts.cat=new Chart(cv,{type:ty==='pie'?'pie':'doughnut',
+      data:{labels:cats.map(c=>c.name),datasets:[{data:cats.map(c=>c.v),backgroundColor:PALETTE,borderWidth:0}]},
+      options:{...pieOpts(),cutout:ty==='pie'?0:'66%'}});}},0);
 }
 function renderTrend(card){
   // stacked area per top category over last 6 months
@@ -904,14 +949,14 @@ function renderTrend(card){
   for(let i=5;i>=0;i--){const rr=periodRange('month',-i);const tx=txnsIn(rr);
     labels.push(new Date(rr.start).toLocaleDateString(undefined,{month:'short'}));
     top.forEach((cid,si)=>{series[si].push(tx.filter(x=>x.category===cid&&x.direction==='out'&&!x.isTransfer).reduce((s,x)=>s+x.amount,0));});}
-  const cv=el('canvas',{height:'220'});card.append(el('strong',{},t('trend')));card.append(cv);
-  setTimeout(()=>{charts.tr=new Chart(cv,{type:'line',
+  card.append(el('strong',{},t('trend')));
+  if(!top.length){card.append(emptyState());return;}
+  const{box,cv}=chartBox();card.append(box);
+  const ty=chartType.trend,kind=ty==='bar'?'bar':'line',fill=ty==='area',stacked=ty!=='line';
+  setTimeout(()=>{charts.tr=new Chart(cv,{type:kind,
     data:{labels,datasets:top.map((cid,i)=>({label:catName(cid),data:series[i],borderColor:PALETTE[i],
-      backgroundColor:PALETTE[i]+'33',fill:true,tension:.35,pointRadius:2}))},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:cssVar('--ink-dim'),boxWidth:12}}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{color:cssVar('--ink-faint')}},
-        y:{stacked:true,grid:{color:cssVar('--line-soft')},ticks:{color:cssVar('--ink-faint')}}}}});},0);
+      backgroundColor:ty==='bar'?PALETTE[i]:PALETTE[i]+'33',fill,tension:.35,pointRadius:kind==='line'?2:0}))},
+    options:baseOpts({legend:true,stacked})});},0);
 }
 function renderCalendar(card){
   const now=new Date();const year=now.getFullYear(),month=now.getMonth();
@@ -935,7 +980,13 @@ function renderPayees(card,tx){
   const cps=counterpartyTotals(tx).slice(0,12);
   if(!cps.length){card.append(emptyState());return;}
   card.append(el('strong',{},t('counterparties')));
-  const max=cps[0].v;
+  if(chartType.payees==='doughnut'){
+    const{box,cv}=chartBox(220);card.append(box);
+    setTimeout(()=>{charts.pay=new Chart(cv,{type:'doughnut',
+      data:{labels:cps.map(c=>c.name),datasets:[{data:cps.map(c=>c.v),backgroundColor:PALETTE,borderWidth:0}]},
+      options:{...pieOpts(),cutout:'62%'}});},0);
+  }
+  const max=cps[0].v||1;
   cps.forEach(c=>{const row=el('div',{style:{padding:'7px 0'}},
     el('div',{class:'flex between',style:{marginBottom:'2px'}},el('span',{},c.name),el('span',{class:'mono'},money(c.v))));
     const bar=el('div',{class:'bar-track'});bar.append(el('div',{class:'bar-fill',style:{width:(c.v/max*100)+'%'}}));
@@ -1240,20 +1291,28 @@ function openImportSheet(){
 /* SMS bridge sheet (§3 Channel A) */
 function openSmsSheet(){
   openSheet(s=>{sheetTitle(s,t('smsBridge'));
-    s.append(el('small',{class:'hint'},t('smsHelp')));
-    s.append(el('div',{class:'spacer'}));
-    const ta=el('textarea',{rows:'7',placeholder:'NBB: BHD 12.500 debited at LULU... Avail Bal BHD 340.200\\n\\n…or JSON from the Shortcut bridge'});
+    const ta=el('textarea',{rows:'6',placeholder:'NBB: BHD 12.500 debited at LULU. Avail Bal BHD 340.200'});
     s.append(el('div',{class:'field'},el('label',{},t('pasteSms')),ta));
-    s.append(el('button',{class:'btn',onclick:async()=>{
-      if(!ta.value.trim())return;
-      const res=await ingestSMSBatch(ta.value);
-      closeSheet();go('home');
-      toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);}},t('parseSms')));
-    // Shortcut spec for rebuild (§2)
+    s.append(el('div',{class:'btn-row'},
+      el('button',{class:'btn sec sm',style:{width:'auto'},onclick:()=>{
+        ta.value=['NBB: BHD 12.500 debited at LULU HYPERMARKET. Avail Bal BHD 340.200',
+          'BBK: Your salary of BHD 850.000 has been credited to account ending 1234',
+          'Fawri+ transfer BHD 50.000 to BH29BMAG1299123456XXXX5678 successful'].join('\n\n');}},'🧪 '+t('trySample')),
+      el('button',{class:'btn',onclick:async()=>{
+        if(!ta.value.trim())return;
+        const res=await ingestSMSBatch(ta.value);
+        closeSheet();go('home');
+        toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);}},t('parseSms'))));
+    // step-by-step guide (§2)
     s.append(el('div',{class:'divider'}));
-    s.append(el('div',{class:'card',style:{background:'var(--card-2)'}},
-      el('div',{style:{fontWeight:700,marginBottom:'6px'}},'iOS Shortcut bridge'),
-      el('small',{class:'hint'},'Personal Automation → “Message Contains” (debited / Fawri / شراء / خصم) → Run Immediately → Append message text + timestamp as JSON line to a file in iCloud (imaliya_bridge.json). Keep the shortcut thin; all parsing happens here.')));
+    s.append(el('div',{style:{fontWeight:700,marginBottom:'8px'}},'📲 '+t('smsGuide')));
+    [t('smsStep1'),t('smsStep2'),t('smsStep3'),t('smsStep4')].forEach((step,i)=>{
+      s.append(el('div',{class:'flex',style:{alignItems:'flex-start',gap:'10px',marginBottom:'10px'}},
+        el('div',{class:'av',style:{width:'26px',height:'26px',fontSize:'13px',fontWeight:'800',
+          background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
+        el('div',{style:{fontSize:'13.5px',lineHeight:'1.5'}},step)));});
+    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginTop:'4px'}},
+      el('small',{class:'hint'},'ℹ️ '+t('smsNote'))));
   });
 }
 function openBudgetSheet(){
