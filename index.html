@@ -270,12 +270,14 @@ const I18N={
     confirmDelete:'Delete this?',erased:'All data erased',saved:'Saved',linkedOk:'Linked & remembered',
     pickAccount:'Select account',addFirstAccount:'Add your first account',noAccounts:'No accounts yet',
     netWorth:'Net worth',thisYear:'this year',transfersExcluded:'Internal transfers excluded from spend',
-    presentation:'Chart style',smsGuide:'How SMS capture works',trySample:'Try a sample message',
-    smsStep1:'In Shortcuts, create a Personal Automation → “Message Contains”. Add trigger words: debited, credited, purchase, Fawri, salary, خصم, شراء, إيداع, راتب.',
-    smsStep2:'Set it to Run Immediately (turn off “Ask Before Running”) so it fires silently on each bank SMS.',
-    smsStep3:'Add one action — Append to File — writing the message text + date as a JSON line to imaliya_bridge.json in iCloud Drive. Keep the Shortcut thin; no parsing inside it.',
-    smsStep4:'Open iMaliya, paste the bridge file (or any SMS) here, and tap Parse. iMaliya reads amount, direction, IBAN, balance & payee — and dedups automatically.',
-    smsNote:'iOS blocks apps from reading the SMS inbox directly, so this Shortcut bridge is the supported path. Apple Pay taps can feed the same file via the iOS-17 “Transaction” automation.'},
+    presentation:'Chart style',smsGuide:'Set up automatic capture (runs while locked)',trySample:'Try a sample message',
+    autoCapture:'Automatic capture',autoCaptureSub:'Logs every bank SMS the instant it arrives — even while your phone is locked, with no need to open the app.',
+    connectBridge:'Connect bridge file',syncNow:'Sync now',connected:'Bridge connected',notConnected:'Not connected',lockSafe:'Works on the lock screen',
+    smsStep1:'In the Shortcuts app: Automation → New → Personal Automation → “Message Contains”. Add trigger words: debited, credited, purchase, Fawri, salary, خصم, شراء, إيداع, راتب.',
+    smsStep2:'Set Run Immediately and turn OFF “Ask Before Running”. Do NOT add any “Open App” action — opening an app forces an unlock. With only a file action, the automation completes silently even while the phone is locked.',
+    smsStep3:'Add one action — Append to File — appending the Shortcut Input (message text) + Current Date as a JSON line to imaliya_bridge.json in iCloud Drive. Keep it thin; no parsing inside the Shortcut.',
+    smsStep4:'In iMaliya → SMS inbox, tap Connect bridge file once, then Sync. New lines are imported and de-duplicated automatically. On desktop/Android it re-syncs silently on every launch.',
+    smsNote:'Why this design: iOS blocks apps from reading the SMS inbox directly, and a web app can only display data while it is open — so the Shortcut does the lock-screen logging to a file, and iMaliya reads that file when you open it. Apple Pay taps can feed the same file via the iOS-17 “Transaction” automation.'},
   ar:{appName:'iMaliya',home:'الرئيسية',transactions:'التحركات',insights:'التحليلات',accounts:'الحسابات',more:'المزيد',
     safeToSpend:'المتاح للصرف',thisMonth:'هذا الشهر',income:'الدخل',spending:'المصروفات',net:'الصافي',balance:'الرصيد',
     recentActivity:'آخر الحركات',seeAll:'عرض الكل',needsReview:'بحاجة لمراجعة',unlinkedIban:'آيبان جديد',
@@ -308,12 +310,14 @@ const I18N={
     confirmDelete:'حذف هذا؟',erased:'تم مسح البيانات',saved:'تم الحفظ',linkedOk:'تم الربط والتذكّر',
     pickAccount:'اختر الحساب',addFirstAccount:'أضف حسابك الأول',noAccounts:'لا حسابات بعد',
     netWorth:'صافي الثروة',thisYear:'هذا العام',transfersExcluded:'التحويلات الداخلية مستثناة',
-    presentation:'نوع الرسم',smsGuide:'كيف يتم التقاط الرسائل',trySample:'جرّب رسالة تجريبية',
-    smsStep1:'في تطبيق الاختصارات، أنشئ أتمتة شخصية ← «الرسالة تحتوي». أضف كلمات التفعيل: خصم، شراء، إيداع، راتب، Fawri، debited، credited.',
-    smsStep2:'اجعلها «تشغيل فوري» (أوقف «اسأل قبل التشغيل») لتعمل بصمت مع كل رسالة من البنك.',
-    smsStep3:'أضف إجراءً واحدًا — «إلحاق بملف» — يكتب نص الرسالة والتاريخ كسطر JSON في ملف imaliya_bridge.json على iCloud. أبقِ الاختصار بسيطًا دون أي تحليل بداخله.',
-    smsStep4:'افتح iMaliya، الصق محتوى الملف (أو أي رسالة) هنا واضغط «تحليل». يقرأ iMaliya المبلغ والاتجاه والآيبان والرصيد والجهة، ويتجاهل المكرر تلقائيًا.',
-    smsNote:'يمنع iOS التطبيقات من قراءة صندوق الرسائل مباشرة، لذا فإن جسر الاختصارات هو الطريقة المدعومة. كما يمكن لمدفوعات Apple Pay تغذية نفس الملف عبر أتمتة «المعاملة» في iOS 17.'}
+    presentation:'نوع الرسم',smsGuide:'إعداد الالتقاط التلقائي (يعمل والشاشة مقفلة)',trySample:'جرّب رسالة تجريبية',
+    autoCapture:'الالتقاط التلقائي',autoCaptureSub:'يسجّل كل رسالة من البنك فور وصولها — حتى والهاتف مقفل، ودون فتح التطبيق.',
+    connectBridge:'ربط ملف الجسر',syncNow:'مزامنة الآن',connected:'تم ربط الجسر',notConnected:'غير مربوط',lockSafe:'يعمل وقفل الشاشة مفعّل',
+    smsStep1:'في تطبيق الاختصارات: الأتمتة ← جديد ← أتمتة شخصية ← «الرسالة تحتوي». أضف كلمات التفعيل: خصم، شراء، إيداع، راتب، Fawri، debited، credited.',
+    smsStep2:'فعّل «تشغيل فوري» وأوقف «اسأل قبل التشغيل». لا تُضِف أي إجراء «فتح التطبيق» لأن فتح أي تطبيق يفرض إلغاء القفل. بإجراء الملف فقط تكتمل الأتمتة بصمت حتى والهاتف مقفل.',
+    smsStep3:'أضف إجراءً واحدًا — «إلحاق بملف» — يُلحق نص الرسالة (مُدخل الاختصار) والتاريخ كسطر JSON في ملف imaliya_bridge.json على iCloud. أبقِه بسيطًا دون أي تحليل بداخله.',
+    smsStep4:'في iMaliya ← رسائل البنك، اضغط «ربط ملف الجسر» مرة واحدة ثم «مزامنة». تُستورد الأسطر الجديدة ويُتجاهل المكرر تلقائيًا. على الحاسوب/أندرويد تتم المزامنة تلقائيًا عند كل فتح.',
+    smsNote:'سبب التصميم: يمنع iOS التطبيقات من قراءة صندوق الرسائل مباشرة، وتطبيق الويب لا يعرض البيانات إلا وهو مفتوح — لذا يتولى الاختصار التسجيل في ملف والشاشة مقفلة، ويقرأ iMaliya هذا الملف عند فتحه. كما يمكن لمدفوعات Apple Pay تغذية الملف نفسه عبر أتمتة «المعاملة» في iOS 17.'}
 };
 let LANG=localStorage.getItem('iml.lang')||'en';
 const t=k=>(I18N[LANG]&&I18N[LANG][k])||I18N.en[k]||k;
@@ -566,11 +570,15 @@ async function ingestSMSBatch(blob){
   // blob may be multiple messages separated by blank lines, or JSON bridge array
   let msgs=[];
   const trimmed=blob.trim();
-  if(trimmed.startsWith('[')||trimmed.startsWith('{')){
-    try{const j=JSON.parse(trimmed);const arr=Array.isArray(j)?j:[j];
-      msgs=arr.map(o=>({text:o.text||o.body||o.message||String(o),ts:o.ts?new Date(o.ts).getTime():Date.now()}));}
-    catch(e){msgs=[{text:blob,ts:Date.now()}];}
-  }else{
+  const asMsg=o=>({text:o.text||o.body||o.message||String(o),ts:o.ts?new Date(o.ts).getTime():Date.now()});
+  if(trimmed.startsWith('[')){ // JSON array (whole-file)
+    try{msgs=JSON.parse(trimmed).map(asMsg);}catch(e){msgs=[{text:blob,ts:Date.now()}];}
+  }else if(/^\s*\{[\s\S]*\}\s*$/.test(trimmed)&&!/\}\s*\n\s*\{/.test(trimmed)){ // single JSON object
+    try{msgs=[asMsg(JSON.parse(trimmed))];}catch(e){msgs=[{text:blob,ts:Date.now()}];}
+  }else if(/^\s*\{/.test(trimmed)&&/\}\s*$/m.test(trimmed)){ // NDJSON: one {..} per line (what the Shortcut appends)
+    msgs=trimmed.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+      try{return asMsg(JSON.parse(l));}catch(e){return {text:l,ts:Date.now()};}});
+  }else{ // raw text blocks separated by blank lines
     msgs=trimmed.split(/\n\s*\n/).filter(s=>s.trim()).map(s=>({text:s.trim(),ts:Date.now()}));
   }
   let added=0,dup=0;
@@ -1048,7 +1056,7 @@ function viewMore(root){
   v.append(el('div',{class:'section-title'},t('importStatement')+' / '+t('smsBridge')));
   v.append(el('div',{class:'card flush'},
     moreRow('📄',t('importStatement'),t('importHelp').slice(0,40)+'…',()=>openImportSheet()),
-    moreRow('💬',t('smsBridge'),t('smsHelp').slice(0,40)+'…',()=>openSmsSheet())));
+    moreRow('💬',t('autoCapture'),bridgeHandle?'✅ '+t('connected'):t('notConnected'),()=>openSmsSheet())));
 
   v.append(el('div',{class:'section-title'},t('settings')));
   v.append(el('div',{class:'card flush'},
@@ -1291,6 +1299,17 @@ function openImportSheet(){
 /* SMS bridge sheet (§3 Channel A) */
 function openSmsSheet(){
   openSheet(s=>{sheetTitle(s,t('smsBridge'));
+    // Automatic-capture card
+    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
+      el('div',{class:'flex between',style:{marginBottom:'4px'}},
+        el('strong',{},'⚡ '+t('autoCapture')),
+        el('span',{class:'badge '+(bridgeHandle?'b-pos':'')},bridgeHandle?t('connected'):t('notConnected'))),
+      el('small',{class:'hint',style:{marginBottom:'10px'}},t('autoCaptureSub')+' · '+t('lockSafe')),
+      el('div',{class:'btn-row'},
+        el('button',{class:'btn',onclick:()=>connectBridge()},'🔗 '+t('connectBridge')),
+        el('button',{class:'btn sec',style:{width:'auto'},onclick:async()=>{
+          const res=await syncBridge();if(res){go('home');toast(`${res.added} ${t('imported')}`);}else toast(t('connectBridge'));}},'↻ '+t('syncNow')))));
+    s.append(el('div',{class:'section-title',style:{margin:'4px 4px 8px'}},t('pasteSms')));
     const ta=el('textarea',{rows:'6',placeholder:'NBB: BHD 12.500 debited at LULU. Avail Bal BHD 340.200'});
     s.append(el('div',{class:'field'},el('label',{},t('pasteSms')),ta));
     s.append(el('div',{class:'btn-row'},
@@ -1406,6 +1425,47 @@ function setupLock(){
 }
 
 /* ----------------------------- 15. Boot ----------------------------- */
+/* ----------------------------- Auto-capture bridge (Shortcut → file) -----------------------------
+   The iOS Shortcut does the lock-screen-safe logging (append SMS to an iCloud file, no app open).
+   The app reads that file. File System Access (desktop / Android Chrome) remembers the handle and
+   re-syncs silently each launch; iOS Safari has no persistent handle, so it uses a one-tap picker. */
+let bridgeHandle=null;
+async function loadBridgeHandle(){try{const m=await DB.get('meta','bridgeHandle');bridgeHandle=(m&&m.handle)||null;}catch(e){}}
+function bridgeSupported(){return typeof window.showOpenFilePicker==='function';}
+async function connectBridge(){
+  if(!bridgeSupported()){pickBridgeFile();return;}
+  try{const [h]=await window.showOpenFilePicker({types:[{description:'iMaliya bridge',
+      accept:{'application/json':['.json'],'text/plain':['.txt']}}]});
+    bridgeHandle=h;await DB.put('meta',{id:'bridgeHandle',handle:h});
+    const res=await syncBridge();closeSheet();go('home');
+    toast(`${t('connected')}${res&&res.added?' · '+res.added+' '+t('imported'):''}`);}catch(e){}
+}
+async function syncBridge(){
+  if(!bridgeHandle)return null;
+  try{ if(bridgeHandle.queryPermission){let p=await bridgeHandle.queryPermission({mode:'read'});
+      if(p!=='granted'){p=await bridgeHandle.requestPermission({mode:'read'});if(p!=='granted')return null;} }
+    const file=await bridgeHandle.getFile();const text=await file.text();
+    return await ingestSMSBatch(text);}catch(e){return null;}
+}
+function pickBridgeFile(){ // iOS fallback — one tap, auto-imports, dedups
+  const f=el('input',{type:'file',accept:'.json,.txt'});
+  f.onchange=async()=>{const file=f.files[0];if(!file)return;const text=await file.text();
+    const res=await ingestSMSBatch(text);closeSheet();go('home');
+    toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);};
+  f.click();
+}
+async function autoSyncBridge(){ // silent re-sync on launch where the platform allows
+  await loadBridgeHandle();
+  if(bridgeHandle){const res=await syncBridge();if(res&&res.added){go(currentTab);toast(`↻ ${res.added} ${t('imported')}`);}}
+}
+async function ingestFromURL(){ // a Shortcut that opens the app (phone unlocked) can pipe data in
+  const qs=new URLSearchParams(location.search);const hash=location.hash||'';
+  const payload=qs.get('sms')||qs.get('bridge')||(hash.startsWith('#sms=')?decodeURIComponent(hash.slice(5)):'');
+  if(!payload)return;
+  try{const res=await ingestSMSBatch(payload);if(res.added){go('home');toast(`↻ ${res.added} ${t('imported')}`);}}catch(e){}
+  try{history.replaceState(null,'',location.pathname);}catch(e){}
+}
+
 async function boot(){
   // theme
   const th=localStorage.getItem('iml.theme')||'dark';
@@ -1420,8 +1480,9 @@ async function boot(){
   $('#fab').onclick=()=>openTxnSheet();
   setupLock();
   go('home');
-  // ingest iCloud bridge if a shortcut wrote one to a known location is not accessible from web;
-  // user pastes via SMS sheet. (Documented limitation §2.)
+  // pull in anything the auto-capture Shortcut logged while the app was closed/locked
+  await ingestFromURL();
+  await autoSyncBridge();
   // register a minimal service worker for offline shell
   if('serviceWorker' in navigator){
     const swCode=`self.addEventListener('install',e=>self.skipWaiting());

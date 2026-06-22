@@ -24,6 +24,10 @@ Open `index.html` in Safari → **Share → Add to Home Screen** to install as a
 | §9 | IndexedDB storage, service worker for offline shell | `DB`, boot SW |
 | §10 | On-device by default, raw SMS stays local, masked IBANs, full data ownership | throughout |
 
+## Automatic capture — works while the phone is locked
+
+See **[SHORTCUT.md](SHORTCUT.md)** for the full build. In short: an iOS personal automation (`Message Contains` → Run Immediately) appends every bank SMS to `imaliya_bridge.json` in iCloud the instant it arrives — **no app open, no unlock needed**, because the only action is a file append. iMaliya reads that file on open (silently re-syncing each launch on desktop/Android; one-tap **Sync** on iPhone, since iOS Safari can't keep a permanent file handle). Imports de-duplicate, so syncing repeatedly is safe. A web app can't render while closed, so *logging* is automatic but *viewing* happens when you open the app; add an optional "Show Notification" step for an instant on-lock-screen confirmation.
+
 ## iOS Shortcut bridge (§2) — canonical spec, keep in repo
 
 iOS blocks third-party SMS-inbox access, so capture goes through a **thin Shortcut** that hands raw text to iMaliya. Rebuild it deterministically from this spec:
