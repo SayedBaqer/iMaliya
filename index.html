@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 15 · 2026-06-23';
+const BUILD='build 16 · 2026-06-23';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -1569,6 +1569,15 @@ function openSmsSheet(){
           el('div',{class:'av',style:{width:'26px',height:'26px',fontSize:'13px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
           el('div',{style:{fontSize:'13.5px',lineHeight:'1.5'}},step))),
       el('small',{class:'hint'},'ℹ️ '+t('smsNote'))));
+    // ---- FALLBACK: no Scriptable, built-in Shortcuts actions only ----
+    s.append(el('div',{class:'card',style:{marginBottom:'14px'}},
+      el('strong',{},'📁 '+t('filesImport')),
+      el('small',{class:'hint',style:{margin:'6px 0 12px'}},t('filesImportSub')),
+      [t('fStep1'),t('fStep2'),t('fStep3')].map((step,i)=>
+        el('div',{class:'flex',style:{alignItems:'flex-start',gap:'10px',marginBottom:'10px'}},
+          el('div',{class:'av',style:{width:'26px',height:'26px',fontSize:'13px',fontWeight:'800',background:'var(--ink-faint)',color:'var(--bg)',flexShrink:'0'}},(i+1)+''),
+          el('div',{style:{fontSize:'13.5px',lineHeight:'1.5'}},step))),
+      el('button',{class:'btn',style:{marginTop:'4px'},onclick:()=>importFromFiles()},'📁 '+t('pickFile'))));
     // ---- SECONDARY: manual / testing ----
     s.append(el('div',{class:'section-title'},t('manualTesting')));
     const ta=el('textarea',{rows:'4',placeholder:'NBB: BHD 12.500 debited at LULU. Avail Bal BHD 340.200'});
@@ -1582,7 +1591,6 @@ function openSmsSheet(){
         if(!ta.value.trim())return;
         const res=await ingestSMSBatch(ta.value);closeSheet();go('home');
         toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);}},t('parseSms'))));
-    s.append(el('button',{class:'btn sec',style:{marginTop:'10px'},onclick:()=>importFromFiles()},'📁 '+t('pickFile')));
   });
 }
 function openBudgetSheet(){
