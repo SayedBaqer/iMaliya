@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 13 · 2026-06-23';
+const BUILD='build 14 · 2026-06-23';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -295,6 +295,14 @@ const I18N={
     fStep1:'Shortcut → Automation → “Message Contains” (your bank words). Run Immediately, Ask Before Running OFF.',
     fStep2:'Add one action “Append to File”: append the Shortcut Input + a new line to a file in iCloud Drive named imaliya_inbox.txt (Shortcuts creates it). No “Open App” — so it runs even while locked.',
     fStep3:'Here, tap “Choose file from Files”, pick imaliya_inbox.txt. All new messages import and de-duplicate.',
+    scriptableTitle:'Auto-capture setup (Scriptable)',
+    scriptableSub:'The reliable way on iPhone: captures every bank SMS automatically — even while the phone is locked — and it’s ready the moment you open the app.',
+    copyScript:'Copy Scriptable script',scriptCopied:'Script copied — paste it into a new Scriptable script',
+    sStep1:'Install “Scriptable” from the App Store (free).',
+    sStep2:'Open Scriptable → “+” (new script) → paste the copied script → name it iMaliya → Done.',
+    sStep3:'Long-press the iMaliya script → Add to Home Screen. From now on, open iMaliya from THAT icon.',
+    sStep4:'Shortcuts → Automation → New → Personal Automation → “Message Contains” (your bank words). Run Immediately ON, Ask Before Running OFF. Add ONE action: Run Script → iMaliya, and pass the Message as input. Do NOT add “Open App”.',
+    manualTesting:'Manual / testing',
     presentation:'Chart style',smsGuide:'Set up automatic capture (runs while locked)',trySample:'Try a sample message',
     autoCapture:'Automatic capture',autoCaptureSub:'Logs every bank SMS the instant it arrives — even while your phone is locked, with no need to open the app.',
     connectBridge:'Connect bridge file',syncNow:'Sync now',connected:'Bridge connected',notConnected:'Not connected',lockSafe:'Works on the lock screen',
@@ -353,6 +361,14 @@ const I18N={
     fStep1:'الاختصارات ← الأتمتة ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل».',
     fStep2:'أضف إجراء «إلحاق بملف»: ألحق مُدخل الاختصار + سطرًا جديدًا بملف على iCloud باسم imaliya_inbox.txt (يُنشئه الاختصار). دون «فتح التطبيق» ليعمل والشاشة مقفلة.',
     fStep3:'هنا اضغط «اختر ملفًا من الملفات»، واختر imaliya_inbox.txt. تُستورد كل الرسائل الجديدة ويُتجاهل المكرر.',
+    scriptableTitle:'إعداد الالتقاط التلقائي (Scriptable)',
+    scriptableSub:'الطريقة الموثوقة على الآيفون: تلتقط كل رسالة بنك تلقائيًا — حتى والشاشة مقفلة — وتكون جاهزة فور فتح التطبيق.',
+    copyScript:'نسخ سكربت Scriptable',scriptCopied:'تم نسخ السكربت — الصقه في سكربت جديد بـ Scriptable',
+    sStep1:'ثبّت تطبيق «Scriptable» من App Store (مجاني).',
+    sStep2:'افتح Scriptable ← «+» (سكربت جديد) ← الصق السكربت ← سمِّه iMaliya ← تم.',
+    sStep3:'اضغط مطوّلًا على سكربت iMaliya ← أضف إلى الشاشة الرئيسية. من الآن افتح iMaliya من تلك الأيقونة.',
+    sStep4:'الاختصارات ← الأتمتة ← أتمتة شخصية ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل». أضف إجراءً واحدًا: «تشغيل سكربت» ← iMaliya مع تمرير الرسالة. دون «فتح التطبيق».',
+    manualTesting:'يدوي / اختبار',
     presentation:'نوع الرسم',smsGuide:'إعداد الالتقاط التلقائي (يعمل والشاشة مقفلة)',trySample:'جرّب رسالة تجريبية',
     autoCapture:'الالتقاط التلقائي',autoCaptureSub:'يسجّل كل رسالة من البنك فور وصولها — حتى والهاتف مقفل، ودون فتح التطبيق.',
     connectBridge:'ربط ملف الجسر',syncNow:'مزامنة الآن',connected:'تم ربط الجسر',notConnected:'غير مربوط',lockSafe:'يعمل وقفل الشاشة مفعّل',
@@ -1521,53 +1537,42 @@ function openImportSheet(){
 }
 
 /* SMS bridge sheet (§3 Channel A) */
+// Generates the ready-to-paste Scriptable script, pointed at THIS app's URL
+function scriptableSrc(){
+  const APP=location.origin+location.pathname;
+  return `// iMaliya — Scriptable capture + viewer (auto-generated, build ${BUILD})
+// Automation (with SMS) -> captures silently, even while LOCKED.
+// Home-Screen icon (no input) -> opens the app and auto-imports.
+const APP_URL=${JSON.stringify(APP)};
+const INBOX="imaliya_inbox.json", STATE="imaliya_state.json";
+function fm(){try{return FileManager.iCloud()}catch(e){return FileManager.local()}}
+function P(f,n){return f.joinPath(f.documentsDirectory(),n)}
+async function rd(f,n){const p=P(f,n);try{if(!f.fileExists(p))return"";if(!f.isFileDownloaded(p))await f.downloadFileFromiCloud(p);return f.readString(p)||""}catch(e){return""}}
+function inp(){if(args.plainTexts&&args.plainTexts.length)return args.plainTexts.join("\\n");const p=args.shortcutParameter;if(typeof p==="string")return p;if(p&&typeof p==="object")return p.text||p.body||p.message||"";return""}
+async function capture(t){const f=fm();const prev=await rd(f,INBOX);const line=JSON.stringify({text:t,ts:new Date().toISOString()});f.writeString(P(f,INBOX),(prev&&!prev.endsWith("\\n")?prev+"\\n":prev)+line+"\\n");try{const n=new Notification();n.title="iMaliya";n.body="Transaction logged";await n.schedule()}catch(e){}Script.complete()}
+async function viewer(){const f=fm();const state=await rd(f,STATE),inbox=await rd(f,INBOX);const wv=new WebView();await wv.loadURL(APP_URL);if(state&&state.trim()){try{await wv.evaluateJavaScript("window.imaliyaRestore&&window.imaliyaRestore("+JSON.stringify(state)+")",true)}catch(e){}}if(inbox&&inbox.trim()){try{await wv.evaluateJavaScript("window.imaliyaIngest&&window.imaliyaIngest("+JSON.stringify(inbox)+")",true)}catch(e){}try{f.writeString(P(f,INBOX),"")}catch(e){}}await wv.present(true);try{const out=await wv.evaluateJavaScript("window.imaliyaExport?window.imaliyaExport():''");if(out&&out.trim())f.writeString(P(f,STATE),out)}catch(e){}Script.complete()}
+const I=inp().trim();if(I){await capture(I)}else{await viewer()}`;
+}
 function openSmsSheet(){
-  openSheet(s=>{sheetTitle(s,t('smsBridge'));
-    const base=location.origin+location.pathname;
-    const template=base+'?sms=[SMS]';
-    // ---- Auto-log LINK card (the method that works on iPhone Safari) ----
-    const linkField=el('input',{type:'text',readonly:'',value:template,
-      style:{fontSize:'12px'},onclick:e=>e.target.select()});
-    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
-      el('strong',{},'🔗 '+t('shortcutLink')),
-      el('small',{class:'hint',style:{margin:'6px 0 10px'}},t('shortcutLinkSub')),
-      el('div',{class:'field',style:{marginBottom:'8px'}},linkField),
-      el('div',{class:'btn-row'},
-        el('button',{class:'btn',onclick:async()=>{
-          try{await navigator.clipboard.writeText(template);}catch(e){linkField.select();document.execCommand&&document.execCommand('copy');}
-          toast('📋 '+t('linkCopied'));}},'📋 '+t('copyLink')),
-        el('button',{class:'btn sec',style:{width:'auto'},onclick:()=>{
-          location.href=base+'?sms='+encodeURIComponent('TEST: BHD 9.500 debited at TEST SHOP. Avail Bal BHD 100.000');}},'🧪 '+t('trySample'))),
+  openSheet(s=>{sheetTitle(s,'⚡ '+t('autoCapture'));
+    // ---- PRIMARY: Scriptable auto-capture (the one reliable path on iPhone) ----
+    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'14px'}},
+      el('strong',{},'⚙️ '+t('scriptableTitle')),
+      el('small',{class:'hint',style:{margin:'6px 0 12px'}},t('scriptableSub')),
+      el('button',{class:'btn',onclick:async()=>{const src=scriptableSrc();
+        try{await navigator.clipboard.writeText(src);}
+        catch(e){const x=el('textarea',{});x.value=src;document.body.append(x);x.select();try{document.execCommand('copy');}catch(_){}x.remove();}
+        toast('📋 '+t('scriptCopied'));}},'📋 '+t('copyScript')),
       el('div',{class:'spacer'}),
-      [t('urlStep1'),t('urlStep2'),t('urlStep3')].map((step,i)=>
-        el('div',{class:'flex',style:{alignItems:'flex-start',gap:'9px',marginBottom:'8px'}},
-          el('div',{class:'av',style:{width:'24px',height:'24px',fontSize:'12px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
-          el('div',{style:{fontSize:'13px',lineHeight:'1.5'}},step))),
-      el('small',{class:'hint'},'ℹ️ '+t('safariNote'))));
-    // ---- Save-to-Files & import card (reliable local method on iPhone) ----
-    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
-      el('strong',{},'📁 '+t('filesImport')),
-      el('small',{class:'hint',style:{margin:'6px 0 10px'}},t('filesImportSub')),
-      el('button',{class:'btn',onclick:()=>importFromFiles()},'📁 '+t('pickFile')),
-      el('div',{class:'spacer'}),
-      [t('fStep1'),t('fStep2'),t('fStep3')].map((step,i)=>
-        el('div',{class:'flex',style:{alignItems:'flex-start',gap:'9px',marginBottom:'8px'}},
-          el('div',{class:'av',style:{width:'24px',height:'24px',fontSize:'12px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
-          el('div',{style:{fontSize:'13px',lineHeight:'1.5'}},step)))));
-    // ---- File-bridge card: only on platforms with File System Access (desktop / Android Chrome) ----
-    if(bridgeSupported())
-      s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginBottom:'12px'}},
-        el('div',{class:'flex between',style:{marginBottom:'4px'}},
-          el('strong',{},'⚡ '+t('autoCapture')),
-          el('span',{class:'badge '+(bridgeHandle?'b-pos':'')},bridgeHandle?t('connected'):t('notConnected'))),
-        el('small',{class:'hint',style:{marginBottom:'10px'}},t('autoCaptureSub')+' · '+t('lockSafe')),
-        el('div',{class:'btn-row'},
-          el('button',{class:'btn',onclick:()=>connectBridge()},'🔗 '+t('connectBridge')),
-          el('button',{class:'btn sec',style:{width:'auto'},onclick:async()=>{
-            const res=await syncBridge();if(res){go('home');toast(`${res.added} ${t('imported')}`);}else toast(t('connectBridge'));}},'↻ '+t('syncNow')))));
-    s.append(el('div',{class:'section-title',style:{margin:'4px 4px 8px'}},t('pasteSms')));
-    const ta=el('textarea',{rows:'6',placeholder:'NBB: BHD 12.500 debited at LULU. Avail Bal BHD 340.200'});
-    s.append(el('div',{class:'field'},el('label',{},t('pasteSms')),ta));
+      [t('sStep1'),t('sStep2'),t('sStep3'),t('sStep4')].map((step,i)=>
+        el('div',{class:'flex',style:{alignItems:'flex-start',gap:'10px',marginBottom:'10px'}},
+          el('div',{class:'av',style:{width:'26px',height:'26px',fontSize:'13px',fontWeight:'800',background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
+          el('div',{style:{fontSize:'13.5px',lineHeight:'1.5'}},step))),
+      el('small',{class:'hint'},'ℹ️ '+t('smsNote'))));
+    // ---- SECONDARY: manual / testing ----
+    s.append(el('div',{class:'section-title'},t('manualTesting')));
+    const ta=el('textarea',{rows:'4',placeholder:'NBB: BHD 12.500 debited at LULU. Avail Bal BHD 340.200'});
+    s.append(el('div',{class:'field'},ta));
     s.append(el('div',{class:'btn-row'},
       el('button',{class:'btn sec sm',style:{width:'auto'},onclick:()=>{
         ta.value=['NBB: BHD 12.500 debited at LULU HYPERMARKET. Avail Bal BHD 340.200',
@@ -1575,19 +1580,9 @@ function openSmsSheet(){
           'Fawri+ transfer BHD 50.000 to BH29BMAG1299123456XXXX5678 successful'].join('\n\n');}},'🧪 '+t('trySample')),
       el('button',{class:'btn',onclick:async()=>{
         if(!ta.value.trim())return;
-        const res=await ingestSMSBatch(ta.value);
-        closeSheet();go('home');
+        const res=await ingestSMSBatch(ta.value);closeSheet();go('home');
         toast(`${res.added} ${t('imported')}${res.dup?' · '+res.dup+' '+t('duplicates'):''}`);}},t('parseSms'))));
-    // step-by-step guide (§2)
-    s.append(el('div',{class:'divider'}));
-    s.append(el('div',{style:{fontWeight:700,marginBottom:'8px'}},'📲 '+t('smsGuide')));
-    [t('smsStep1'),t('smsStep2'),t('smsStep3'),t('smsStep4')].forEach((step,i)=>{
-      s.append(el('div',{class:'flex',style:{alignItems:'flex-start',gap:'10px',marginBottom:'10px'}},
-        el('div',{class:'av',style:{width:'26px',height:'26px',fontSize:'13px',fontWeight:'800',
-          background:'var(--brand)',color:'#03201a',flexShrink:'0'}},(i+1)+''),
-        el('div',{style:{fontSize:'13.5px',lineHeight:'1.5'}},step)));});
-    s.append(el('div',{class:'card',style:{background:'var(--card-2)',marginTop:'4px'}},
-      el('small',{class:'hint'},'ℹ️ '+t('smsNote'))));
+    s.append(el('button',{class:'btn sec',style:{marginTop:'10px'},onclick:()=>importFromFiles()},'📁 '+t('pickFile')));
   });
 }
 function openBudgetSheet(){
