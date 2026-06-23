@@ -9,8 +9,10 @@
 //
 // SETUP (once):
 //   1. Install Scriptable (App Store). Paste this as a script named "iMaliya".
-//   2. Add to Home Screen: Scriptable -> long-press this script -> Add to Home Screen.
-//      (That icon is how you OPEN iMaliya from now on.)
+//   2. Make a Home-Screen icon (Scriptable can't add one itself — use Shortcuts):
+//      Shortcuts -> + New Shortcut -> action "Run Script" (Scriptable) -> choose iMaliya
+//      -> name it iMaliya -> share icon -> "Add to Home Screen". Open iMaliya from it.
+//      (Or just tap this script inside Scriptable to open the app.)
 //   3. Shortcuts -> Automation -> New -> Personal Automation -> "Message Contains"
 //      -> your bank words (debited, credited, Fawri, salary, خصم, شراء, إيداع, راتب).
 //      Run Immediately ON, Ask Before Running OFF.

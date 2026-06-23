@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 14 · 2026-06-23';
+const BUILD='build 15 · 2026-06-23';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -300,8 +300,8 @@ const I18N={
     copyScript:'Copy Scriptable script',scriptCopied:'Script copied — paste it into a new Scriptable script',
     sStep1:'Install “Scriptable” from the App Store (free).',
     sStep2:'Open Scriptable → “+” (new script) → paste the copied script → name it iMaliya → Done.',
-    sStep3:'Long-press the iMaliya script → Add to Home Screen. From now on, open iMaliya from THAT icon.',
-    sStep4:'Shortcuts → Automation → New → Personal Automation → “Message Contains” (your bank words). Run Immediately ON, Ask Before Running OFF. Add ONE action: Run Script → iMaliya, and pass the Message as input. Do NOT add “Open App”.',
+    sStep3:'Make the icon via Shortcuts (Scriptable can’t add one itself): Shortcuts → + New Shortcut → add action “Run Script” (Scriptable) → choose iMaliya → name the shortcut iMaliya → tap the share icon ⬆️ → “Add to Home Screen”. Open iMaliya from THAT icon. (Or just tap the script inside Scriptable to open it.)',
+    sStep4:'Auto-capture: Shortcuts → Automation tab → + → Personal Automation → “Message Contains” (your bank words). Run Immediately ON, Ask Before Running OFF. Add ONE action: Run Script → iMaliya, and pass the Message as input. Do NOT add “Open App”.',
     manualTesting:'Manual / testing',
     presentation:'Chart style',smsGuide:'Set up automatic capture (runs while locked)',trySample:'Try a sample message',
     autoCapture:'Automatic capture',autoCaptureSub:'Logs every bank SMS the instant it arrives — even while your phone is locked, with no need to open the app.',
@@ -366,8 +366,8 @@ const I18N={
     copyScript:'نسخ سكربت Scriptable',scriptCopied:'تم نسخ السكربت — الصقه في سكربت جديد بـ Scriptable',
     sStep1:'ثبّت تطبيق «Scriptable» من App Store (مجاني).',
     sStep2:'افتح Scriptable ← «+» (سكربت جديد) ← الصق السكربت ← سمِّه iMaliya ← تم.',
-    sStep3:'اضغط مطوّلًا على سكربت iMaliya ← أضف إلى الشاشة الرئيسية. من الآن افتح iMaliya من تلك الأيقونة.',
-    sStep4:'الاختصارات ← الأتمتة ← أتمتة شخصية ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل». أضف إجراءً واحدًا: «تشغيل سكربت» ← iMaliya مع تمرير الرسالة. دون «فتح التطبيق».',
+    sStep3:'أنشئ الأيقونة عبر «الاختصارات» (Scriptable لا يضيف أيقونة بنفسه): الاختصارات ← «+» اختصار جديد ← أضف إجراء «تشغيل سكربت» (Scriptable) ← اختر iMaliya ← سمِّ الاختصار iMaliya ← اضغط زر المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية». افتح iMaliya من تلك الأيقونة. (أو شغّل السكربت من داخل Scriptable مباشرة.)',
+    sStep4:'الالتقاط التلقائي: الاختصارات ← تبويب الأتمتة ← «+» ← أتمتة شخصية ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل». أضف إجراءً واحدًا: «تشغيل سكربت» ← iMaliya مع تمرير الرسالة. دون «فتح التطبيق».',
     manualTesting:'يدوي / اختبار',
     presentation:'نوع الرسم',smsGuide:'إعداد الالتقاط التلقائي (يعمل والشاشة مقفلة)',trySample:'جرّب رسالة تجريبية',
     autoCapture:'الالتقاط التلقائي',autoCaptureSub:'يسجّل كل رسالة من البنك فور وصولها — حتى والهاتف مقفل، ودون فتح التطبيق.',
