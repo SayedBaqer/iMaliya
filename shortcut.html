@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1020" />
+<title>iMaliya — Shortcut Generator</title>
+<style>
+:root{--bg:#0b1020;--card:#141d40;--card2:#1a2550;--ink:#e8edff;--dim:#9aa6d6;--faint:#6b76a8;
+  --line:#26305e;--brand:#00d3a7;--brand2:#3b82f6;--warn:#fbbf24;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  line-height:1.5;padding:env(safe-area-inset-top) 0 40px}
+.wrap{max-width:560px;margin:0 auto;padding:18px}
+h1{font-size:22px;margin:6px 0 2px;display:flex;align-items:center;gap:10px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));
+  display:grid;place-items:center;color:#031a16;font-weight:900;font-size:19px}
+.sub{color:var(--dim);font-size:14px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px}
+label{display:block;font-size:12px;color:var(--dim);margin:0 0 6px;font-weight:600}
+input{width:100%;padding:12px 13px;border-radius:11px;background:#0e1530;border:1px solid var(--line);color:var(--ink);font-size:15px;outline:none}
+input:focus{border-color:var(--brand)}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:13px;background:var(--brand);color:#03201a;
+  font-weight:800;font-size:16px;margin-top:12px;cursor:pointer}
+.btn:active{transform:scale(.99)}
+.btn.sec{background:var(--card2);color:var(--ink);border:1px solid var(--line)}
+.step{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+.num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#03201a;
+  font-weight:800;font-size:13px;display:grid;place-items:center}
+.step div:last-child{font-size:14px}
+.note{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:12px;
+  font-size:13px;color:#ffe9b8;margin-top:8px}
+code{background:#0e1530;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:12px;word-break:break-all}
+.muted{color:var(--faint);font-size:12px}
+a{color:var(--brand)}
+.ok{color:var(--brand);font-weight:700}
+hr{border:none;border-top:1px solid var(--line);margin:18px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="logo">م</span> Shortcut Generator</h1>
+  <div class="sub">Builds an iOS Shortcut that sends every bank SMS straight into iMaliya — so you don't have to assemble it by hand.</div>
+
+  <div class="card">
+    <h2>1 · Your iMaliya address</h2>
+    <label>The URL where you open iMaliya</label>
+    <input id="url" type="text" value="https://sayedbaqer.github.io/iMaliya/" />
+    <button class="btn" id="gen">⬇︎ Generate &amp; download Shortcut</button>
+    <div class="muted" style="margin-top:8px">Downloads <code>iMaliya-Log.shortcut</code>. On iPhone it lands in Files → tap it to import.</div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Allow importing it (one-time)</h2>
+    <div class="step"><div class="num">a</div><div>Open <b>Settings → Shortcuts</b> and turn on <b>Allow Untrusted Shortcuts</b>. (If it's greyed out, open the Shortcuts app and run any shortcut once, then come back.)</div></div>
+    <div class="step"><div class="num">b</div><div>Open the <b>Files</b> app → tap <code>iMaliya-Log.shortcut</code> → it opens Shortcuts → scroll down → <b>Add Untrusted Shortcut</b>.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Make it run on every bank SMS</h2>
+    <div class="step"><div class="num">a</div><div><b>Shortcuts → Automation → ＋ → Create Personal Automation → "Message" → Message Contains</b>, and type your bank words (e.g. <code>debited</code>, <code>credited</code>, <code>Fawri</code>, <code>خصم</code>, <code>شراء</code>).</div></div>
+    <div class="step"><div class="num">b</div><div>Set <b>Run Immediately</b> (turn off "Ask Before Running").</div></div>
+    <div class="step"><div class="num">c</div><div>Add action <b>Run Shortcut</b> → choose <b>iMaliya Log</b>. Make sure the message is passed (Shortcut Input). Done.</div></div>
+    <div class="note">Opening a link needs the phone <b>unlocked</b>, so this method logs the SMS the next time you wake/unlock the phone (it queues while locked). For truly-locked background capture you'd need the Scriptable method instead.</div>
+  </div>
+
+  <div class="card">
+    <h2>Manual fallback (no import)</h2>
+    <div class="muted">If importing won't work on your iOS, build the Shortcut by hand with two actions:</div>
+    <div class="step" style="margin-top:10px"><div class="num">1</div><div><b>URL Encode</b> → input: <i>Shortcut Input</i>.</div></div>
+    <div class="step"><div class="num">2</div><div><b>Open URLs</b> → URL: <code id="tmpl">…</code> then insert the <i>URL Encoded Text</i> variable at the end.</div></div>
+    <button class="btn sec" id="copy">📋 Copy URL template</button>
+  </div>
+
+  <div class="muted" style="text-align:center">iMaliya · open the main app and check <b>More → About</b> for your build.</div>
+</div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+function appURL(){ let u=$("#url").value.trim(); if(!/^https?:\/\//.test(u))u="https://"+u; if(!u.endsWith("/")&&!u.includes("?"))u+="/"; return u; }
+function refresh(){ $("#tmpl").textContent=appURL()+"?sms="; }
+$("#url").addEventListener("input",refresh); refresh();
+
+$("#copy").addEventListener("click",async()=>{
+  const tpl=appURL()+"?sms=";
+  try{ await navigator.clipboard.writeText(tpl); }catch(e){}
+  $("#copy").textContent="✓ Copied"; setTimeout(()=>$("#copy").textContent="📋 Copy URL template",1500);
+});
+
+// ---- Build an unsigned .shortcut (plist) : URL Encode (Shortcut Input) -> Open URLs ----
+const OBJ="￼"; // object-replacement char marks where a variable is inserted
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function buildPlist(base){
+  const uuid="A1B2C3D4-0000-4000-8000-000000000001";
+  const urlString=base+"?sms="+OBJ;
+  const offset=(base+"?sms=").length; // UTF-16 units before the placeholder (ASCII url)
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>WFWorkflowActions</key>
+	<array>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.urlencode</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>${uuid}</string>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>Type</key>
+								<string>ExtensionInput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>${esc(OBJ)}</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.openurl</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{${offset}, 1}</key>
+							<dict>
+								<key>OutputName</key>
+								<string>URL Encoded Text</string>
+								<key>OutputUUID</key>
+								<string>${uuid}</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>${esc(urlString)}</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
+			</dict>
+		</dict>
+	</array>
+	<key>WFWorkflowClientVersion</key>
+	<string>1146.14</string>
+	<key>WFWorkflowHasOutputFallback</key>
+	<false/>
+	<key>WFWorkflowHasShortcutInputVariables</key>
+	<true/>
+	<key>WFWorkflowIcon</key>
+	<dict>
+		<key>WFWorkflowIconGlyphNumber</key>
+		<integer>59511</integer>
+		<key>WFWorkflowIconStartColor</key>
+		<integer>463140863</integer>
+	</dict>
+	<key>WFWorkflowImportQuestions</key>
+	<array/>
+	<key>WFWorkflowInputContentItemClasses</key>
+	<array>
+		<string>WFStringContentItem</string>
+	</array>
+	<key>WFWorkflowMinimumClientVersion</key>
+	<integer>900</integer>
+	<key>WFWorkflowMinimumClientVersionString</key>
+	<string>900</string>
+	<key>WFWorkflowName</key>
+	<string>iMaliya Log</string>
+	<key>WFWorkflowTypes</key>
+	<array>
+		<string>NCWidget</string>
+		<string>WatchKit</string>
+	</array>
+</dict>
+</plist>`;
+}
+$("#gen").addEventListener("click",()=>{
+  const plist=buildPlist(appURL());
+  const blob=new Blob([plist],{type:"application/octet-stream"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="iMaliya-Log.shortcut";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  $("#gen").textContent="✓ Downloaded — open it in Files";
+  setTimeout(()=>$("#gen").textContent="⬇︎ Generate & download Shortcut",2500);
+});
+</script>
+</body>
+</html>
