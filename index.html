@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 16 · 2026-06-23';
+const BUILD='build 17 · 2026-06-24';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -289,12 +289,12 @@ const I18N={
     urlStep2:'Add action “URL Encode” on the Shortcut Input. Then “Text”: paste the copied link and replace [SMS] with the URL-Encoded result.',
     urlStep3:'Add action “Open URLs” with that Text. It opens iMaliya and logs the SMS. (Opening a page needs the phone unlocked.)',
     safariNote:'Open iMaliya in Safari (the same place the Shortcut opens) so capture and viewing share the same storage.',
-    filesImport:'Save to Files & import',
-    filesImportSub:'Let the Shortcut append each bank SMS to a file in your Files app (works while locked), then import that file here. Re-importing is safe — duplicates are skipped.',
+    filesImport:'No-Scriptable capture (Notes)',
+    filesImportSub:'Shortcuts has no real “append to file”, so use the Notes app — its “Append to Note” reliably adds each SMS and works while locked. Then paste the note here.',
     pickFile:'Choose file from Files',
-    fStep1:'Shortcut → Automation → “Message Contains” (your bank words). Run Immediately, Ask Before Running OFF.',
-    fStep2:'Add one action “Append to File”: append the Shortcut Input + a new line to a file in iCloud Drive named imaliya_inbox.txt (Shortcuts creates it). No “Open App” — so it runs even while locked.',
-    fStep3:'Here, tap “Choose file from Files”, pick imaliya_inbox.txt. All new messages import and de-duplicate.',
+    fStep1:'Make a note in the Notes app called “iMaliya inbox”. Then Shortcuts → Automation → New → Personal Automation → “Message Contains” (your bank words). Run Immediately ON.',
+    fStep2:'Add the built-in action “Append to Note” → append the Shortcut Input to your “iMaliya inbox” note. No “Open App” → runs while locked. (No iCloud file needed.)',
+    fStep3:'To import: open that note → Select All → Copy → paste into the box below → Parse. Re-pasting the whole note is safe; duplicates are skipped.',
     scriptableTitle:'Auto-capture setup (Scriptable)',
     scriptableSub:'The reliable way on iPhone: captures every bank SMS automatically — even while the phone is locked — and it’s ready the moment you open the app.',
     copyScript:'Copy Scriptable script',scriptCopied:'Script copied — paste it into a new Scriptable script',
@@ -355,12 +355,12 @@ const I18N={
     urlStep2:'أضف إجراء «ترميز URL» على مُدخل الاختصار. ثم «نص»: الصق الرابط المنسوخ واستبدل [SMS] بالنتيجة المُرمّزة.',
     urlStep3:'أضف إجراء «فتح عناوين URL» بهذا النص. يفتح iMaliya ويسجّل الرسالة. (فتح الصفحة يتطلب فتح قفل الهاتف.)',
     safariNote:'افتح iMaliya في Safari (نفس المكان الذي يفتحه الاختصار) ليتشارك الالتقاط والعرض نفس التخزين.',
-    filesImport:'الحفظ في الملفات والاستيراد',
-    filesImportSub:'دع الاختصار يُلحق كل رسالة بنك بملف في تطبيق «الملفات» (يعمل والشاشة مقفلة)، ثم استورد الملف هنا. إعادة الاستيراد آمنة — يُتجاهل المكرر.',
+    filesImport:'التقاط بدون Scriptable (الملاحظات)',
+    filesImportSub:'لا يملك «الاختصارات» إجراء إلحاق بملف فعلي، لذا استخدم «الملاحظات»: إجراء «إلحاق بملاحظة» يضيف كل رسالة بثبات ويعمل والشاشة مقفلة. ثم الصق الملاحظة هنا.',
     pickFile:'اختر ملفًا من «الملفات»',
-    fStep1:'الاختصارات ← الأتمتة ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري، وأوقف «اسأل قبل التشغيل».',
-    fStep2:'أضف إجراء «إلحاق بملف»: ألحق مُدخل الاختصار + سطرًا جديدًا بملف على iCloud باسم imaliya_inbox.txt (يُنشئه الاختصار). دون «فتح التطبيق» ليعمل والشاشة مقفلة.',
-    fStep3:'هنا اضغط «اختر ملفًا من الملفات»، واختر imaliya_inbox.txt. تُستورد كل الرسائل الجديدة ويُتجاهل المكرر.',
+    fStep1:'أنشئ ملاحظة في تطبيق «الملاحظات» باسم «iMaliya inbox». ثم الاختصارات ← الأتمتة ← أتمتة شخصية ← «الرسالة تحتوي» (كلمات بنكك). تشغيل فوري.',
+    fStep2:'أضف إجراء «إلحاق بملاحظة» ← ألحق مُدخل الاختصار بملاحظة «iMaliya inbox». دون «فتح التطبيق» ليعمل والشاشة مقفلة. (دون الحاجة لملف على iCloud.)',
+    fStep3:'للاستيراد: افتح الملاحظة ← تحديد الكل ← نسخ ← الصق في الصندوق بالأسفل ← «تحليل». إعادة لصق الملاحظة كاملة آمنة؛ يُتجاهل المكرر.',
     scriptableTitle:'إعداد الالتقاط التلقائي (Scriptable)',
     scriptableSub:'الطريقة الموثوقة على الآيفون: تلتقط كل رسالة بنك تلقائيًا — حتى والشاشة مقفلة — وتكون جاهزة فور فتح التطبيق.',
     copyScript:'نسخ سكربت Scriptable',scriptCopied:'تم نسخ السكربت — الصقه في سكربت جديد بـ Scriptable',
