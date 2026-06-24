@@ -220,7 +220,7 @@ small.hint{display:block;color:var(--ink-faint);font-size:11.5px;margin-top:5px;
    - dark/light, EN/AR + RTL, PIN/biometric lock, JSON/CSV export
 ============================================================================ */
 
-const BUILD='build 18 · 2026-06-24';
+const BUILD='build 19 · 2026-06-24';
 /* ----------------------------- 0. Utilities ----------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
@@ -1736,9 +1736,13 @@ async function autoSyncBridge(){ // silent re-sync on launch where the platform 
 }
 async function ingestFromURL(){ // the iOS Shortcut opens this app with ?sms=<bank text> and we log it
   const qs=new URLSearchParams(location.search);const hash=location.hash||'';
-  let payload=qs.get('sms')||qs.get('text')||qs.get('bridge')||'';
+  // read the RAW value so a "+" (e.g. Fawri+) survives — URLSearchParams would turn it into a space.
+  // This lets the simplest possible 1-action Shortcut work: Open URLs with the message appended.
+  const dec=s=>{try{return decodeURIComponent(s);}catch(e){return s.replace(/%20/g,' ');}};
+  const raw=(location.search.match(/[?&](?:sms|text|bridge)=([^&]*)/)||[])[1];
+  let payload=raw!=null?dec(raw):'';
   const b64=qs.get('b64');if(b64){try{payload=decodeURIComponent(escape(atob(b64.replace(/ /g,'+'))));}catch(e){}}
-  if(!payload&&hash.startsWith('#sms='))payload=decodeURIComponent(hash.slice(5));
+  if(!payload&&hash.startsWith('#sms='))payload=dec(hash.slice(5));
   if(!payload)return;
   let res=null;try{res=await ingestSMSBatch(payload);}catch(e){}
   try{history.replaceState(null,'',location.pathname);}catch(e){}

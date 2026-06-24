@@ -47,10 +47,19 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
     <b>“Unsigned” is normal.</b> A website can't sign a Shortcut or add it to your Apple account — only Apple can, and only when a shortcut is shared from the Shortcuts app on a device. To install this one you just enable <b>Allow Untrusted Shortcuts</b> once (step 1). It's safe — you can read every action before adding it.
   </div>
 
+  <div class="card" style="border-color:var(--brand)">
+    <h2>★ Easiest: build it yourself (no import, no setting)</h2>
+    <div class="muted" style="margin-bottom:10px">A shortcut you create is trusted automatically — skip all the signing/untrusted stuff. It's just <b>one action</b>:</div>
+    <div class="step"><div class="num">1</div><div><b>Shortcuts app → ＋ (new) → Add Action → search “Open URLs”.</b></div></div>
+    <div class="step"><div class="num">2</div><div>In the URL field type <code id="tmpl2">…</code> then tap the field and insert the <b>Shortcut Input</b> variable right after the <code>=</code>.</div></div>
+    <div class="step"><div class="num">3</div><div>Name it <b>iMaliya Log</b> → Done. Then add it to your Message automation (step 3 below).</div></div>
+    <button class="btn sec" id="copy2">📋 Copy the URL to type</button>
+  </div>
+
   <div class="card">
-    <h2>1 · Allow untrusted shortcuts (one-time, required)</h2>
-    <div class="step"><div class="num">a</div><div>Open the <b>Shortcuts</b> app and <b>run any shortcut once</b> (this unlocks the setting).</div></div>
-    <div class="step"><div class="num">b</div><div>Go to <b>Settings → Shortcuts</b> → turn ON <b>Allow Untrusted Shortcuts</b>.</div></div>
+    <h2>1 · (Only if importing the file) allow untrusted</h2>
+    <div class="step"><div class="num">a</div><div>Open <b>Shortcuts</b> and <b>run any shortcut once</b> (this unlocks the setting).</div></div>
+    <div class="step"><div class="num">b</div><div>On <b>iOS 18 / 26</b> the toggle moved: <b>Settings → Apps → Shortcuts → Allow Untrusted Shortcuts</b>. (Older iOS: Settings → Shortcuts.) Turn it ON.</div></div>
   </div>
 
   <div class="card">
@@ -86,14 +95,14 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
 "use strict";
 const $=s=>document.querySelector(s);
 function appURL(){ let u=$("#url").value.trim(); if(!/^https?:\/\//.test(u))u="https://"+u; if(!u.endsWith("/")&&!u.includes("?"))u+="/"; return u; }
-function refresh(){ $("#tmpl").textContent=appURL()+"?sms="; }
+function refresh(){ const u=appURL()+"?sms="; $("#tmpl").textContent=u; const t2=document.querySelector("#tmpl2"); if(t2)t2.textContent=u; }
 $("#url").addEventListener("input",refresh); refresh();
 
-$("#copy").addEventListener("click",async()=>{
-  const tpl=appURL()+"?sms=";
-  try{ await navigator.clipboard.writeText(tpl); }catch(e){}
-  $("#copy").textContent="✓ Copied"; setTimeout(()=>$("#copy").textContent="📋 Copy URL template",1500);
-});
+function copyURL(btn){ const tpl=appURL()+"?sms=";
+  (navigator.clipboard?navigator.clipboard.writeText(tpl):Promise.reject()).catch(()=>{});
+  const o=btn.textContent; btn.textContent="✓ Copied"; setTimeout(()=>btn.textContent=o,1500); }
+$("#copy").addEventListener("click",e=>copyURL(e.currentTarget));
+const c2=document.querySelector("#copy2"); if(c2)c2.addEventListener("click",e=>copyURL(e.currentTarget));
 
 // ---- Build an unsigned .shortcut (plist) : URL Encode (Shortcut Input) -> Open URLs ----
 const OBJ="￼"; // object-replacement char marks where a variable is inserted
