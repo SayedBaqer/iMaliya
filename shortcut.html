@@ -43,18 +43,24 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
   <h1><span class="logo">م</span> Shortcut Generator</h1>
   <div class="sub">Builds an iOS Shortcut that sends every bank SMS straight into iMaliya — so you don't have to assemble it by hand.</div>
 
-  <div class="card">
-    <h2>1 · Your iMaliya address</h2>
-    <label>The URL where you open iMaliya</label>
-    <input id="url" type="text" value="https://sayedbaqer.github.io/iMaliya/" />
-    <button class="btn" id="gen">⬇︎ Generate &amp; download Shortcut</button>
-    <div class="muted" style="margin-top:8px">Downloads <code>iMaliya-Log.shortcut</code>. On iPhone it lands in Files → tap it to import.</div>
+  <div class="note" style="margin-bottom:14px">
+    <b>“Unsigned” is normal.</b> A website can't sign a Shortcut or add it to your Apple account — only Apple can, and only when a shortcut is shared from the Shortcuts app on a device. To install this one you just enable <b>Allow Untrusted Shortcuts</b> once (step 1). It's safe — you can read every action before adding it.
   </div>
 
   <div class="card">
-    <h2>2 · Allow importing it (one-time)</h2>
-    <div class="step"><div class="num">a</div><div>Open <b>Settings → Shortcuts</b> and turn on <b>Allow Untrusted Shortcuts</b>. (If it's greyed out, open the Shortcuts app and run any shortcut once, then come back.)</div></div>
-    <div class="step"><div class="num">b</div><div>Open the <b>Files</b> app → tap <code>iMaliya-Log.shortcut</code> → it opens Shortcuts → scroll down → <b>Add Untrusted Shortcut</b>.</div></div>
+    <h2>1 · Allow untrusted shortcuts (one-time, required)</h2>
+    <div class="step"><div class="num">a</div><div>Open the <b>Shortcuts</b> app and <b>run any shortcut once</b> (this unlocks the setting).</div></div>
+    <div class="step"><div class="num">b</div><div>Go to <b>Settings → Shortcuts</b> → turn ON <b>Allow Untrusted Shortcuts</b>.</div></div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Your iMaliya address</h2>
+    <label>The URL where you open iMaliya</label>
+    <input id="url" type="text" value="https://sayedbaqer.github.io/iMaliya/" />
+    <button class="btn" id="share">📲 Send to Shortcuts</button>
+    <button class="btn sec" id="gen">⬇︎ Or download the .shortcut file</button>
+    <div class="muted" style="margin-top:8px">Open this page in <b>Safari</b> (not the home-screen app). “Send to Shortcuts” opens the share sheet — pick <b>Shortcuts</b> (or <b>Save to Files</b>, then tap the file). You'll see <b>Add Untrusted Shortcut</b> → tap it.</div>
+    <div id="msg" class="ok" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
@@ -192,16 +198,29 @@ function buildPlist(base){
 </dict>
 </plist>`;
 }
-$("#gen").addEventListener("click",()=>{
+function shortcutFile(){
   const plist=buildPlist(appURL());
-  const blob=new Blob([plist],{type:"application/octet-stream"});
+  return new File([plist],"iMaliya-Log.shortcut",{type:"application/octet-stream"});
+}
+// Primary on iOS: share the file straight to Shortcuts / Files (more reliable than download)
+$("#share").addEventListener("click",async()=>{
+  const file=shortcutFile();
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:"iMaliya Log"}); $("#msg").textContent="Pick Shortcuts (or Save to Files) → Add Untrusted Shortcut."; }
+    catch(e){ /* user cancelled */ }
+  }else{
+    $("#msg").textContent="Sharing not available — using download instead.";
+    $("#gen").click();
+  }
+});
+$("#gen").addEventListener("click",()=>{
+  const blob=new Blob([buildPlist(appURL())],{type:"application/octet-stream"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="iMaliya-Log.shortcut";
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-  $("#gen").textContent="✓ Downloaded — open it in Files";
-  setTimeout(()=>$("#gen").textContent="⬇︎ Generate & download Shortcut",2500);
+  $("#msg").textContent="Downloaded → open Files → tap iMaliya-Log.shortcut → Add Untrusted Shortcut.";
 });
 </script>
 </body>
