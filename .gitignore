@@ -1,4 +1,8 @@
 _check.js
+_cmsg.txt
+_t.js
+_*.js
 .DS_Store
 Thumbs.db
 .claude/
+.mcp.json
